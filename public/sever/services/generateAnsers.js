@@ -14,7 +14,7 @@ function buildContext(chunks) {
   return chunks
     .map((chunk, index) => {
       const meta = chunk.metadata || {};
-      return `Chunk ${index + 1}\nsourceTitle: ${meta.sourceTitle || 'School Handbook'}\nsection: ${meta.section || 'Unknown'}\npage: ${meta.page ?? 'unknown'}\ntext:\n${chunk.text}`;
+      return `Chunk ${index + 1}\nsourceTitle: ${meta.sourceTitle || 'School Handbook'}\nsection: ${meta.section || '—'}\npage: ${meta.page ?? '—'}\ntext:\n${chunk.text}`;
     })
     .join('\n\n');
 }
