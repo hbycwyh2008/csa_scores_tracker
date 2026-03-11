@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI School Handbook Assistant</title>
+    <title>KLIS AI School Handbook Assistant</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <main class="container">
-      <h1>AI School Handbook Assistant</h1>
+      <h1>KLIS AI School Handbook Assistant</h1>
       <p class="sub">Ask handbook questions and get grounded answers with citations.</p>
 
       <section class="panel">
@@ -18,12 +18,14 @@
           <div class="file-input">
             <button type="button" id="file-select-button">Choose file</button>
             <span id="file-selected-text" class="muted">No file chosen</span>
-            <input type="file" id="handbook-file" name="file" accept=".docx,.txt,.md" />
+            <input type="file" id="handbook-file" name="file" accept=".pdf,.docx,.txt,.md" />
           </div>
-          <p class="muted">Or specify a server file path (optional):</p>
-          <input type="text" id="handbook-path" placeholder="C:\\path\\to\\handbook.docx" />
           <button type="submit">Ingest handbook</button>
+          <div class="progress" id="ingest-progress">
+            <div class="progress-bar" id="ingest-progress-bar"></div>
+          </div>
         </form>
+        <p id="ingest-record" class="ingest-record" aria-live="polite"></p>
         <p id="ingest-status" class="muted"></p>
       </section>
 

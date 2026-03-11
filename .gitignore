@@ -22,4 +22,5 @@ dist/
 build/
 .cache/
 data/handbook/uploads/
+chroma_data/
 

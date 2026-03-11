@@ -1,0 +1,24 @@
+# Render Blueprint: AI School Handbook Assistant
+# Deploy: connect this repo in Render Dashboard, then use "New" -> "Blueprint" and point to this file.
+
+services:
+  - type: web
+    runtime: docker
+    name: ai-school-handbook
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: BASE_URL
+        value: https://sg.uiuiapi.com/v1
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: CHROMA_HOST
+        value: 127.0.0.1
+      - key: CHROMA_PORT
+        value: "8000"
+      - key: CHROMA_COLLECTION
+        value: school_handbook

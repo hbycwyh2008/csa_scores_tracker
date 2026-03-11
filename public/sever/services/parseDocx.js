@@ -1,9 +1,10 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import path from 'path';
+import pdf from 'pdf-parse';
 
-export async function parseHandbook(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
+export async function parseHandbook(filePath, originalName) {
+  const ext = path.extname(originalName || filePath).toLowerCase();
 
   if (ext === '.txt' || ext === '.md') {
     return fs.readFile(filePath, 'utf8');
@@ -14,5 +15,11 @@ export async function parseHandbook(filePath) {
     return result.value;
   }
 
-  throw new Error('Unsupported file type. Use .docx, .txt, or .md');
+  if (ext === '.pdf') {
+    const data = await fs.readFile(filePath);
+    const result = await pdf(data);
+    return result.text;
+  }
+
+  throw new Error('Unsupported file type. Use .docx, .txt, .md, or .pdf');
 }

@@ -1,72 +1,65 @@
-const host = process.env.CHROMA_HOST || 'localhost';
-const port = process.env.CHROMA_PORT || '8000';
-const baseUrl = `http://${host}:${port}/api/v1`;
+import { ChromaClient } from 'chromadb';
+
+const host = process.env.CHROMA_HOST || '127.0.0.1';
+const port = parseInt(process.env.CHROMA_PORT || '8000', 10);
 const collectionName = process.env.CHROMA_COLLECTION || 'school_handbook';
 
-async function chromaFetch(path, options = {}) {
-  const response = await fetch(`${baseUrl}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options
-  });
+const client = new ChromaClient({ host, port });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Chroma error (${response.status}): ${body}`);
-  }
-
-  return response.json();
+async function getCollection() {
+  return client.getOrCreateCollection({ name: collectionName });
 }
 
 export async function ensureCollection() {
-  try {
-    return await chromaFetch(`/collections/${collectionName}`);
-  } catch (_err) {
-    return chromaFetch('/collections', {
-      method: 'POST',
-      body: JSON.stringify({ name: collectionName })
-    });
-  }
+  return getCollection();
 }
 
 export async function clearCollection() {
-  await ensureCollection();
-  return chromaFetch(`/collections/${collectionName}/delete`, {
-    method: 'POST',
-    body: JSON.stringify({ where: {} })
-  });
+  try {
+    await client.deleteCollection({ name: collectionName });
+  } catch (err) {
+    const isNotFound =
+      err?.name === 'ChromaNotFoundError' ||
+      err?.message?.includes('does not exist') ||
+      err?.message?.includes('could not be found') ||
+      err?.status === 404;
+    if (isNotFound) return;
+    throw err;
+  }
 }
 
 export async function upsertChunks(chunks, embeddings) {
-  await ensureCollection();
-  const payload = {
+  const collection = await getCollection();
+  await collection.upsert({
     ids: chunks.map((c) => c.id),
     embeddings,
     documents: chunks.map((c) => c.text),
-    metadatas: chunks.map((c) => c.metadata)
-  };
-
-  return chromaFetch(`/collections/${collectionName}/upsert`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
+    metadatas: chunks.map((c) => c.metadata ?? {}),
   });
 }
 
 export async function queryChunks(queryEmbedding, nResults = 4) {
-  await ensureCollection();
-  const result = await chromaFetch(`/collections/${collectionName}/query`, {
-    method: 'POST',
-    body: JSON.stringify({
-      query_embeddings: [queryEmbedding],
-      n_results: nResults,
-      include: ['documents', 'metadatas', 'distances']
-    })
+  const collection = await getCollection();
+  const result = await collection.query({
+    queryEmbeddings: [queryEmbedding],
+    nResults,
+    include: ['documents', 'metadatas', 'distances'],
   });
-
-  const docs = result.documents?.[0] || [];
-  const metadatas = result.metadatas?.[0] || [];
-
+  const docs = result.documents?.[0] ?? [];
+  const metadatas = result.metadatas?.[0] ?? [];
   return docs.map((text, index) => ({
-    text,
-    metadata: metadatas[index] || {}
+    text: text ?? '',
+    metadata: metadatas[index] ?? {},
   }));
+}
+
+/** Returns { hasData: boolean, count: number } for ingest status. */
+export async function getIngestStatus() {
+  try {
+    const collection = await getCollection();
+    const count = await collection.count();
+    return { hasData: count > 0, count };
+  } catch (_err) {
+    return { hasData: false, count: 0 };
+  }
 }
