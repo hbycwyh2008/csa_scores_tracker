@@ -591,7 +591,7 @@ async function start() {
     process.exit(1);
   }
   await bootstrapTeacher();
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`AP Score Tracker → ${BASE_URL}`);
   });
 }
