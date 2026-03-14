@@ -247,6 +247,9 @@
         .ap-1 { color: #6b7280; }
         .score-above { color: #16a34a !important; }
         .score-below { color: #dc2626 !important; }
+        .mcq-frq-pass { color: #16a34a; font-weight: 600; }
+        .mcq-frq-fail { color: #dc2626; font-weight: 600; }
+        table.score-table td.td-mcq, table.score-table td.td-frq { white-space: nowrap; }
 
         /* Subject filter pills */
         .subject-filter {
@@ -381,10 +384,23 @@
         .badge-2 { background: #fee2e2; color: #991b1b; }
         .badge-1 { background: #f3f4f6; color: #6b7280; }
 
+        /* Status strip at top (状态总览) */
+        .status-strip {
+            margin: 0 20px 16px;
+        }
+        .status-strip .status-strip-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+            letter-spacing: 0.02em;
+        }
+        .status-strip .estimated-banner {
+            margin: 0;
+        }
         /* Estimated Score Banner */
         .estimated-banner {
-            margin: 0 20px 20px;
-            padding: 18px 28px;
+            padding: 16px 24px;
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
             border-radius: 12px;
             border-left: 5px solid #2563eb;
@@ -393,6 +409,7 @@
             gap: 28px;
             flex-wrap: wrap;
         }
+        .est-block.est-mcq-frq .est-value { font-size: 20px; }
         .est-block {
             display: flex;
             flex-direction: column;
@@ -519,23 +536,34 @@
             border-top: 1px solid #f0f0f0;
         }
 
-        /* Login overlay */
+        /* Login overlay — single centered card */
         #loginOverlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 9999;
-            display: flex; align-items: center; justify-content: center; padding: 20px;
+            position: fixed; inset: 0; background: #0f172a; z-index: 9999;
+            display: flex; align-items: center; justify-content: center; padding: 24px;
         }
         #loginOverlay.hidden { display: none; }
-        .login-card {
-            background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            padding: 32px; max-width: 380px; width: 100%;
+        .auth-card {
+            background: #fff; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
+            width: 100%; max-width: 400px; overflow: hidden;
         }
-        .login-card h2 { font-size: 20px; margin-bottom: 20px; color: #1a3c6e; text-align: center; }
-        .login-card input { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        .login-card button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-        .login-card .btn-password { background: linear-gradient(135deg, #1a3c6e 0%, #2563eb 100%); color: #fff; }
-        .login-card .btn-link { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 13px; text-decoration: underline; padding: 0; }
-        .login-card .btn-link:hover { color: #1d4ed8; }
-        .login-card .error { color: #dc2626; font-size: 13px; margin-top: 8px; text-align: center; }
+        .auth-card .auth-tabs {
+            display: flex; border-bottom: 1px solid #e2e8f0;
+        }
+        .auth-card .auth-tab {
+            flex: 1; padding: 14px 16px; border: none; background: none; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer;
+        }
+        .auth-card .auth-tab.active { color: #1e40af; border-bottom: 2px solid #1e40af; margin-bottom: -1px; }
+        .auth-card .auth-tab:hover:not(.active) { color: #334155; }
+        .auth-card .auth-panel { padding: 28px 24px; display: none; }
+        .auth-card .auth-panel.active { display: block; }
+        .auth-card input {
+            width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box;
+        }
+        .auth-card input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        .auth-card .btn-primary { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; background: #1e40af; color: #fff; }
+        .auth-card .btn-primary:hover { background: #1d4ed8; }
+        .auth-card .auth-note { font-size: 12px; color: #64748b; margin-top: 12px; line-height: 1.5; }
+        .auth-card .error { color: #dc2626; font-size: 13px; margin-top: 8px; text-align: center; }
         .auth-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 8px 20px; background: rgba(0,0,0,0.1); font-size: 13px; }
         .auth-bar .name { font-weight: 600; }
         .auth-bar .role-badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; }
@@ -561,30 +589,29 @@
 <body>
 
 <div id="loginOverlay">
-    <div class="login-card" id="loginCard">
-        <h2>AP Score Tracker</h2>
-        <form id="loginForm" onsubmit="return handlePasswordLogin(event)">
-            <input type="text" id="loginUsername" placeholder="Username or email" autocomplete="username" />
-            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
-            <div id="loginError" class="error"></div>
-            <button type="submit" class="btn-password">Sign in</button>
-        </form>
-        <div style="margin-top:14px;text-align:center;">
-            <button type="button" class="btn-link" onclick="showRegisterForm()">Register with email</button>
+    <div style="position:absolute;top:28px;left:0;right:0;text-align:center;color:rgba(255,255,255,0.9);font-size:15px;font-weight:600;">AP Score Tracker</div>
+    <div class="auth-card">
+        <div class="auth-tabs">
+            <button type="button" class="auth-tab active" id="tabSignIn" onclick="showLoginForm()">Sign in</button>
+            <button type="button" class="auth-tab" id="tabRegister" onclick="showRegisterForm()">Register</button>
         </div>
-    </div>
-    <div class="login-card hidden" id="registerCard">
-        <h2>Register</h2>
-        <form id="registerForm" onsubmit="return handleRegister(event)">
-            <input type="email" id="registerEmail" placeholder="Email" autocomplete="email" />
-            <input type="password" id="registerPassword" placeholder="Password (min 6)" autocomplete="new-password" />
-            <input type="text" id="registerDisplayName" placeholder="Display name (optional)" autocomplete="name" />
-            <div id="registerError" class="error"></div>
-            <button type="submit" class="btn-password">Submit registration</button>
-        </form>
-        <div style="margin-top:14px;text-align:center;font-size:13px;color:#64748b;">After submission, the teacher will review and link your account to a student.</div>
-        <div style="margin-top:10px;text-align:center;">
-            <button type="button" class="btn-link" onclick="showLoginForm()">Back to sign in</button>
+        <div class="auth-panel active" id="loginPanel">
+            <form id="loginForm" onsubmit="return handlePasswordLogin(event)">
+                <input type="text" id="loginUsername" placeholder="Username or email" autocomplete="username" />
+                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
+                <div id="loginError" class="error"></div>
+                <button type="submit" class="btn-primary">Sign in</button>
+            </form>
+        </div>
+        <div class="auth-panel" id="registerPanel">
+            <form id="registerForm" onsubmit="return handleRegister(event)">
+                <input type="email" id="registerEmail" placeholder="Email" autocomplete="email" />
+                <input type="password" id="registerPassword" placeholder="Password (min 6 characters)" autocomplete="new-password" />
+                <input type="text" id="registerDisplayName" placeholder="Display name (optional)" autocomplete="name" />
+                <div id="registerError" class="error"></div>
+                <button type="submit" class="btn-primary">Submit registration</button>
+            </form>
+            <p class="auth-note">After you submit, the teacher will review and link your account to a student. You can sign in after that.</p>
         </div>
     </div>
 </div>
@@ -651,6 +678,38 @@
         <span class="locked-hint" id="lockedHint">View Only</span>
     </div>
 
+    <!-- Status strip: top of content (状态总览) -->
+    <div class="status-strip" id="statusStrip">
+        <div class="status-strip-title">状态总览</div>
+        <div class="estimated-banner" id="estimatedBanner">
+            <div class="est-block">
+                <span class="est-label">Current Average</span>
+                <span class="est-value" id="estAvg">--</span>
+            </div>
+            <div class="est-block">
+                <span class="est-label">Estimated AP Score</span>
+                <span class="est-value" id="estAP">--</span>
+            </div>
+            <div class="est-block">
+                <span class="est-label">Latest Test Score</span>
+                <span class="est-value" id="estLatest">--</span>
+                <span class="est-detail" id="estLatestName"></span>
+            </div>
+            <div class="est-block">
+                <span class="est-label">Trend</span>
+                <span class="est-value" id="estTrend">--</span>
+            </div>
+            <div class="est-block est-mcq-frq">
+                <span class="est-label">MCQ(错≤5)</span>
+                <span class="est-value" id="estMcq">--</span>
+            </div>
+            <div class="est-block est-mcq-frq">
+                <span class="est-label">FRQ(达标)</span>
+                <span class="est-value" id="estFrq">--</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Subject filter: friendly pill switcher -->
     <div class="subject-filter" id="subjectFilter" data-filter="all" style="margin-bottom:14px;">
         <span class="subject-filter-label">显示科目</span>
@@ -666,27 +725,6 @@
             <thead id="tableHead"></thead>
             <tbody id="tableBody"></tbody>
         </table>
-    </div>
-
-    <!-- Estimated Score Banner -->
-    <div class="estimated-banner" id="estimatedBanner">
-        <div class="est-block">
-            <span class="est-label">Current Average</span>
-            <span class="est-value" id="estAvg">--</span>
-        </div>
-        <div class="est-block">
-            <span class="est-label">Estimated AP Score</span>
-            <span class="est-value" id="estAP">--</span>
-        </div>
-        <div class="est-block">
-            <span class="est-label">Latest Test Score</span>
-            <span class="est-value" id="estLatest">--</span>
-            <span class="est-detail" id="estLatestName"></span>
-        </div>
-        <div class="est-block">
-            <span class="est-label">Trend</span>
-            <span class="est-value" id="estTrend">--</span>
-        </div>
     </div>
 
     <!-- Charts + Conversion -->
@@ -822,8 +860,6 @@ async function api(method, url, body) {
     if (r.status === 401) {
         setToken(null);
         showLoginForm();
-        if (document.getElementById('loginCard')) document.getElementById('loginCard').classList.remove('hidden');
-        if (document.getElementById('registerCard')) document.getElementById('registerCard').classList.add('hidden');
         document.getElementById('loginOverlay').classList.remove('hidden');
         document.getElementById('appContainer').style.display = 'none';
         showToast('Session expired. Please sign in again.', 'error');
@@ -875,22 +911,68 @@ const conversionTitles = {
     'AP CSP': 'Computer Science Principles',
 };
 const fiveMarkBottomLines = { 'AP CSA': 84, 'AP CSP': 90 };
+/** MCQ: 错5个以内达标 */
+const MCQ_MAX_WRONG = 5;
+/** FRQ 达标最低分（按科目，分数为 FRQ 卷面分） */
+const frqMinForPass = { 'AP CSA': 36, 'AP CSP': 35 };
 
+/** 当前学生实际有的科目（从 tests 里取） */
+function getSubjectsInCurrentData() {
+    var set = {};
+    tests.forEach(function(t) { set[t.subject || 'AP CSA'] = true; });
+    return Object.keys(set);
+}
 function setSubjectFilter(value) {
     var el = document.getElementById('subjectFilter');
     if (!el) return;
     el.setAttribute('data-filter', value);
-    document.querySelectorAll('.subject-pill').forEach(function(btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-value') === value);
-    });
+    var pills = el.querySelectorAll('.subject-pill');
+    if (pills.length) {
+        pills.forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-value') === value);
+        });
+    }
     updateAll();
 }
 function getVisibleSubjects() {
     var el = document.getElementById('subjectFilter');
+    var single = el && el.getAttribute('data-single-subject');
+    if (single) return [single];
     var filter = (el && el.getAttribute('data-filter')) || 'all';
     if (filter === 'all') return ['AP CSA', 'AP CSP'];
     if (filter === 'AP CSA' || filter === 'AP CSP') return [filter];
     return ['AP CSA', 'AP CSP'];
+}
+/** 分享/查看模式下只显示该学生有的科目；仅一门时隐藏科目切换 */
+function renderSubjectFilter() {
+    var el = document.getElementById('subjectFilter');
+    if (!el) return;
+    var subjects = getSubjectsInCurrentData();
+    if (sharedMode) {
+        if (subjects.length <= 1) {
+            el.style.display = 'none';
+            el.setAttribute('data-single-subject', subjects[0] || 'AP CSA');
+            el.removeAttribute('data-filter');
+        } else {
+            el.style.display = 'flex';
+            el.removeAttribute('data-single-subject');
+            el.setAttribute('data-filter', 'all');
+            var pillsHtml = '<button type="button" class="subject-pill active" data-value="all" onclick="setSubjectFilter(\'all\')">全部</button>';
+            subjects.forEach(function(s) {
+                pillsHtml += '<button type="button" class="subject-pill" data-value="' + s.replace(/"/g, '&quot;') + '" onclick="setSubjectFilter(\'' + s.replace(/'/g, "\\'") + '\')">' + s.replace(/</g, '&lt;') + '</button>';
+            });
+            var container = el.querySelector('.subject-filter-pills');
+            if (container) container.innerHTML = pillsHtml;
+        }
+    } else {
+        el.style.display = 'flex';
+        el.removeAttribute('data-single-subject');
+        el.setAttribute('data-filter', 'all');
+        var container = el.querySelector('.subject-filter-pills');
+        if (container && container.querySelectorAll('.subject-pill').length !== 3) {
+            container.innerHTML = '<button type="button" class="subject-pill active" data-value="all" onclick="setSubjectFilter(\'all\')">全部</button><button type="button" class="subject-pill" data-value="AP CSA" onclick="setSubjectFilter(\'AP CSA\')">AP CSA</button><button type="button" class="subject-pill" data-value="AP CSP" onclick="setSubjectFilter(\'AP CSP\')">AP CSP</button>';
+        }
+    }
 }
 function onSubjectFilterChange() {
     updateAll();
@@ -980,6 +1062,7 @@ function loadStudent(index) {
     if (nameEl) nameEl.value = s.name;
     if (gradeEl) gradeEl.value = s.grade;
     if (subjEl) subjEl.value = s.subject || 'AP CSA';
+    renderSubjectFilter();
 }
 
 function renderStudentSelect() {
@@ -1112,7 +1195,7 @@ function renderTable() {
         t.bottomLine = getBottomLine(subj);
     });
 
-    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Subject</th><th>5-Mark Line</th><th>Score (/100)</th><th>AP Score</th><th></th></tr>';
+    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Subject</th><th>5-Mark Line</th><th>Score (/100)</th><th>AP Score</th><th>MCQ(错≤5)</th><th>FRQ(达标)</th><th></th></tr>';
 
     var rowNum = 0;
     var rowsHTML = '';
@@ -1126,7 +1209,19 @@ function renderTable() {
         var scoreClass = t.score !== null ? (t.score >= bl ? 'score-above' : 'score-below') : '';
         var scoreDisabled = editMode ? '' : 'readonly';
         var testId = t.id || i;
-        rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name" title="' + (t.name || '').replace(/"/g, '&quot;') + '">' + (t.name || '').replace(/</g, '&lt;') + '</td><td class="td-subject">' + (t.subject || 'AP CSA') + '</td><td class="td-bl">' + bl + '</td><td class="td-score"><input type="number" min="0" max="100" step="0.1" value="' + val + '" placeholder="--" class="' + scoreClass + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onScoreChange(this)" oninput="onScoreChange(this)" ' + scoreDisabled + '></td><td class="td-ap">' + apBadge + '</td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
+        var subj = t.subject || 'AP CSA';
+        var mcqVal = t.mcqWrong != null && t.mcqWrong !== '' ? t.mcqWrong : '';
+        var mcqOk = t.mcqWrong != null && t.mcqWrong !== '' && !isNaN(Number(t.mcqWrong)) && Number(t.mcqWrong) <= MCQ_MAX_WRONG;
+        var mcqBadge = t.mcqWrong != null && t.mcqWrong !== '' && !isNaN(Number(t.mcqWrong)) ? (mcqOk ? '✓' : '✗') : '—';
+        var mcqStatusClass = mcqBadge === '✓' ? ' mcq-frq-pass' : (mcqBadge === '✗' ? ' mcq-frq-fail' : '');
+        var frqVal = t.frqScore != null && t.frqScore !== '' ? t.frqScore : '';
+        var frqMin = frqMinForPass[subj] != null ? frqMinForPass[subj] : 36;
+        var frqOk = t.frqScore != null && t.frqScore !== '' && !isNaN(Number(t.frqScore)) && Number(t.frqScore) >= frqMin;
+        var frqBadge = t.frqScore != null && t.frqScore !== '' && !isNaN(Number(t.frqScore)) ? (frqOk ? '✓' : '✗') : '—';
+        var frqStatusClass = frqBadge === '✓' ? ' mcq-frq-pass' : (frqBadge === '✗' ? ' mcq-frq-fail' : '');
+        var mcqInput = editMode ? '<input type="number" min="0" step="1" value="' + mcqVal + '" placeholder="—" class="mcq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onMcqChange(this)" oninput="onMcqChange(this)" style="width:52px;">' : (mcqVal !== '' ? mcqVal : '—');
+        var frqInput = editMode ? '<input type="number" min="0" step="0.1" value="' + frqVal + '" placeholder="—" class="frq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onFrqChange(this)" oninput="onFrqChange(this)" style="width:52px;">' : (frqVal !== '' ? frqVal : '—');
+        rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name" title="' + (t.name || '').replace(/"/g, '&quot;') + '">' + (t.name || '').replace(/</g, '&lt;') + '</td><td class="td-subject">' + subj + '</td><td class="td-bl">' + bl + '</td><td class="td-score"><input type="number" min="0" max="100" step="0.1" value="' + val + '" placeholder="--" class="' + scoreClass + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onScoreChange(this)" oninput="onScoreChange(this)" ' + scoreDisabled + '></td><td class="td-ap">' + apBadge + '</td><td class="td-mcq">' + mcqInput + ' <span class="mcq-frq-status' + mcqStatusClass + '">' + mcqBadge + '</span></td><td class="td-frq">' + frqInput + ' <span class="mcq-frq-status' + frqStatusClass + '">' + frqBadge + '</span></td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
     });
 
     var visTests = getVisibleTests();
@@ -1135,7 +1230,11 @@ function renderTable() {
     var firstSubj = visTests[0] && (visTests[0].subject || 'AP CSA');
     var apScore = avg !== null ? getAPScore(avg, firstSubj) : null;
     var apBadgeSummary = apScore !== null ? '<span class="score-badge badge-' + apScore + '">' + apScore + '</span>' : '--';
-    rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>—</td><td>' + (avg !== null ? avg.toFixed(1) : '--') + '</td><td>' + apBadgeSummary + '</td><td></td></tr>';
+    var mcqPassCount = visTests.filter(function(t) { var v = t.mcqWrong; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) <= MCQ_MAX_WRONG; }).length;
+    var frqPassCount = visTests.filter(function(t) { var v = t.frqScore, s = t.subject || 'AP CSA'; var min = frqMinForPass[s] != null ? frqMinForPass[s] : 36; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) >= min; }).length;
+    var mcqSummary = 'MCQ 达标: ' + mcqPassCount + '/' + visTests.length;
+    var frqSummary = 'FRQ 达标: ' + frqPassCount + '/' + visTests.length;
+    rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>—</td><td>' + (avg !== null ? avg.toFixed(1) : '--') + '</td><td>' + apBadgeSummary + '</td><td colspan="2">' + mcqSummary + ' &nbsp; ' + frqSummary + '</td><td></td></tr>';
     tbody.innerHTML = rowsHTML;
 }
 
@@ -1158,6 +1257,7 @@ async function deleteTestByIndex(index) {
 }
 function deleteTest(index) { deleteTestByIndex(index); }
 
+var saveMcqFrqTimer = null;
 function onScoreChange(input) {
     const idx = parseInt(input.dataset.index, 10);
     const val = input.value.trim();
@@ -1170,6 +1270,38 @@ function onScoreChange(input) {
     saveScoreTimer = setTimeout(async () => {
         const s = students[currentStudentIndex];
         await api('PUT', '/api/students/' + s.id + '/tests/' + testId, { score: tests[idx].score });
+        showToast('Saved', 'success');
+    }, 600);
+}
+function onMcqChange(input) {
+    const idx = parseInt(input.dataset.index, 10);
+    const val = input.value.trim();
+    tests[idx].mcqWrong = val === '' ? null : parseInt(val, 10);
+    if (isNaN(tests[idx].mcqWrong)) tests[idx].mcqWrong = null;
+    updateAll();
+    if (sharedMode || !students[currentStudentIndex] || !students[currentStudentIndex].id) return;
+    const testId = input.dataset.testId;
+    if (!testId) return;
+    clearTimeout(saveMcqFrqTimer);
+    saveMcqFrqTimer = setTimeout(async () => {
+        const s = students[currentStudentIndex];
+        await api('PUT', '/api/students/' + s.id + '/tests/' + testId, { mcqWrong: tests[idx].mcqWrong });
+        showToast('Saved', 'success');
+    }, 600);
+}
+function onFrqChange(input) {
+    const idx = parseInt(input.dataset.index, 10);
+    const val = input.value.trim();
+    tests[idx].frqScore = val === '' ? null : parseFloat(val);
+    if (isNaN(tests[idx].frqScore)) tests[idx].frqScore = null;
+    updateAll();
+    if (sharedMode || !students[currentStudentIndex] || !students[currentStudentIndex].id) return;
+    const testId = input.dataset.testId;
+    if (!testId) return;
+    clearTimeout(saveMcqFrqTimer);
+    saveMcqFrqTimer = setTimeout(async () => {
+        const s = students[currentStudentIndex];
+        await api('PUT', '/api/students/' + s.id + '/tests/' + testId, { frqScore: tests[idx].frqScore });
         showToast('Saved', 'success');
     }, 600);
 }
@@ -1198,18 +1330,24 @@ function getTrend() {
     return last - prev;
 }
 
-// ===================== BANNER =====================
+// ===================== BANNER (状态总览 - top) =====================
 function updateBanner() {
+    const subject = getConversionChartSubject();
     const avg = getAverage();
-    const apScore = getAPScore(avg);
+    const apScore = getAPScore(avg, subject);
     const latest = getLatestScore();
     const trend = getTrend();
+    const visTests = getVisibleTests();
+    const mcqPassCount = visTests.filter(function(t) { var v = t.mcqWrong; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) <= MCQ_MAX_WRONG; }).length;
+    const frqPassCount = visTests.filter(function(t) { var v = t.frqScore, s = t.subject || 'AP CSA'; var min = frqMinForPass[s] != null ? frqMinForPass[s] : 36; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) >= min; }).length;
 
     const estAvg = document.getElementById('estAvg');
     const estAP = document.getElementById('estAP');
     const estLatest = document.getElementById('estLatest');
     const estLatestName = document.getElementById('estLatestName');
     const estTrend = document.getElementById('estTrend');
+    const estMcq = document.getElementById('estMcq');
+    const estFrq = document.getElementById('estFrq');
 
     estAvg.textContent = avg !== null ? avg.toFixed(1) : '--';
     estAvg.className = 'est-value' + (apScore ? ` score-${apScore}` : '');
@@ -1234,6 +1372,11 @@ function updateBanner() {
         estTrend.textContent = '--';
         estTrend.className = 'est-value';
     }
+
+    if (estMcq) estMcq.textContent = visTests.length ? mcqPassCount + '/' + visTests.length : '--';
+    if (estMcq) estMcq.className = 'est-value' + (visTests.length && mcqPassCount === visTests.length ? ' score-5' : (mcqPassCount > 0 ? ' score-3' : ''));
+    if (estFrq) estFrq.textContent = visTests.length ? frqPassCount + '/' + visTests.length : '--';
+    if (estFrq) estFrq.className = 'est-value' + (visTests.length && frqPassCount === visTests.length ? ' score-5' : (frqPassCount > 0 ? ' score-3' : ''));
 }
 
 // ===================== CHARTS =====================
@@ -1396,7 +1539,16 @@ async function addTest() {
         return;
     }
     if (data) {
-        tests.push({ id: data.id, name: data.name, score: data.score != null ? data.score : null, bottomLine: data.bottom_line || getBottomLine(), position: data.position });
+        tests.push({
+            id: data.id,
+            name: data.name,
+            subject: data.subject || 'AP CSA',
+            score: data.score != null ? data.score : null,
+            bottomLine: data.bottomLine != null ? data.bottomLine : getBottomLine(),
+            position: data.position,
+            mcqWrong: data.mcqWrong,
+            frqScore: data.frqScore
+        });
         updateAll();
     }
 }
@@ -1507,14 +1659,18 @@ function updateAll() {
 
 // ===================== AUTH & ROUTING =====================
 function showRegisterForm() {
-    document.getElementById('loginCard').classList.add('hidden');
-    document.getElementById('registerCard').classList.remove('hidden');
+    document.getElementById('loginPanel').classList.remove('active');
+    document.getElementById('registerPanel').classList.add('active');
+    document.getElementById('tabSignIn').classList.remove('active');
+    document.getElementById('tabRegister').classList.add('active');
     document.getElementById('loginError').textContent = '';
     document.getElementById('registerError').textContent = '';
 }
 function showLoginForm() {
-    document.getElementById('registerCard').classList.add('hidden');
-    document.getElementById('loginCard').classList.remove('hidden');
+    document.getElementById('registerPanel').classList.remove('active');
+    document.getElementById('loginPanel').classList.add('active');
+    document.getElementById('tabRegister').classList.remove('active');
+    document.getElementById('tabSignIn').classList.add('active');
     document.getElementById('registerError').textContent = '';
 }
 function handlePasswordLogin(e) {
@@ -1562,8 +1718,6 @@ async function handleRegister(e) {
 function doLogout() {
     setToken(null);
     showLoginForm();
-    document.getElementById('loginCard').classList.remove('hidden');
-    document.getElementById('registerCard').classList.add('hidden');
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('appContainer').style.display = 'none';
 }
@@ -1609,7 +1763,7 @@ function initApp(user) {
 async function initTeacherView() {
     const data = await api('GET', '/api/students');
     if (!data || Array.isArray(data) === false) return;
-    students = data.map(s => ({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: (s.tests || []).map(t => ({ id: t.id, name: t.name, score: t.score, bottomLine: t.bottomLine || 84, position: t.position })) }));
+    students = data.map(s => ({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: (s.tests || []).map(t => ({ id: t.id, name: t.name, subject: t.subject, score: t.score, bottomLine: t.bottomLine || 84, position: t.position })) }));
     if (students.length === 0) {
         const thead = document.getElementById('tableHead');
         const tbody = document.getElementById('tableBody');
@@ -1629,7 +1783,7 @@ async function initTeacherView() {
 async function initStudentView() {
     const data = await api('GET', '/api/me');
     if (!data || data.error) return;
-    students = [{ id: data.id, name: data.name, grade: data.grade, subject: data.subject, tests: (data.tests || []).map(t => ({ id: t.id, name: t.name, score: t.score, bottomLine: t.bottomLine || 84, position: t.position })) }];
+    students = [{ id: data.id, name: data.name, grade: data.grade, subject: data.subject, tests: (data.tests || []).map(t => ({ id: t.id, name: t.name, subject: t.subject, score: t.score, bottomLine: t.bottomLine || 84, position: t.position, mcqWrong: t.mcqWrong, frqScore: t.frqScore })) }];
     currentStudentIndex = 0;
     loadStudent(0);
     document.getElementById('sharedSubject').textContent = '(' + (data.subject || 'AP CSA') + ')';
@@ -1666,10 +1820,10 @@ async function initViewerLinkView(token) {
         return;
     }
     viewerLinkData = data;
-    students = data.students.map(s => ({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: (s.tests || []).map(t => ({ id: t.id, name: t.name, subject: t.subject, score: t.score, bottomLine: t.bottomLine || 84 })) }));
+    sharedMode = true;
+    students = data.students.map(s => ({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: (s.tests || []).map(t => ({ id: t.id, name: t.name, subject: t.subject, score: t.score, bottomLine: t.bottomLine || 84, position: t.position, mcqWrong: t.mcqWrong, frqScore: t.frqScore })) }));
     currentStudentIndex = 0;
     loadStudent(0);
-    sharedMode = true;
     document.querySelector('.report-header .auth-bar').style.display = 'none';
     document.querySelector('.student-info').style.display = 'flex';
     document.getElementById('studentSelect').innerHTML = '';
@@ -1704,10 +1858,10 @@ async function initShareView(token) {
         container.innerHTML = '<div class="link-error-page"><h2>Invalid or expired link</h2></div>';
         return;
     }
-    students = [{ id: data.id, name: data.name, grade: data.grade, subject: data.subject, tests: (data.tests || []).map(t => ({ id: t.id, name: t.name, score: t.score, bottomLine: t.bottomLine || 84 })) }];
+    sharedMode = true;
+    students = [{ id: data.id, name: data.name, grade: data.grade, subject: data.subject, tests: (data.tests || []).map(t => ({ id: t.id, name: t.name, subject: t.subject, score: t.score, bottomLine: t.bottomLine || 84, position: t.position, mcqWrong: t.mcqWrong, frqScore: t.frqScore })) }];
     currentStudentIndex = 0;
     loadStudent(0);
-    sharedMode = true;
     document.querySelector('.report-header .auth-bar').style.display = 'none';
     document.querySelector('.student-info').style.display = 'none';
     document.getElementById('toolbar').style.display = 'none';

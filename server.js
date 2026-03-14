@@ -27,6 +27,19 @@ function genToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+function mapTestRow(t) {
+  return {
+    id: t.id,
+    name: t.name,
+    subject: t.subject || 'AP CSA',
+    score: t.score != null ? Number(t.score) : null,
+    bottomLine: t.bottom_line,
+    position: t.position,
+    mcqWrong: t.mcq_wrong != null ? Number(t.mcq_wrong) : null,
+    frqScore: t.frq_score != null ? Number(t.frq_score) : null,
+  };
+}
+
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
@@ -286,7 +299,7 @@ app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
   const students = await Promise.all(
     rows.map(async (s) => {
       const tests = await query(
-        `SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position, created_at`,
+        `SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position, created_at`,
         [s.id]
       );
       return {
@@ -296,14 +309,7 @@ app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
         subject: s.subject,
         email: s.email || null,
         registered: !!s.user_id,
-        tests: tests.rows.map((t) => ({
-          id: t.id,
-          name: t.name,
-          subject: t.subject || 'AP CSA',
-          score: t.score != null ? Number(t.score) : null,
-          bottomLine: t.bottom_line,
-          position: t.position,
-        })),
+        tests: tests.rows.map(mapTestRow),
       };
     })
   );
@@ -342,17 +348,17 @@ app.put('/api/students/:id', requireAuth, requireTeacher, async (req, res) => {
     const { rows } = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     const s = rows[0];
-    const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [s.id]);
-    return res.json({ ...s, tests: tests.rows.map((t) => ({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })) });
+    const tests = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [s.id]);
+    return res.json({ ...s, tests: tests.rows.map(mapTestRow) });
   }
   params.push(req.params.id);
   await query(`UPDATE students SET ${updates.join(', ')} WHERE id = $${n}`, params);
   const { rows } = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
-  const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [req.params.id]);
+  const tests = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [req.params.id]);
   res.json({
     ...rows[0],
-    tests: tests.rows.map((t) => ({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })),
+    tests: tests.rows.map(mapTestRow),
   });
 });
 
@@ -378,21 +384,23 @@ app.post('/api/students/:id/invite', requireAuth, requireTeacher, async (req, re
 });
 
 app.post('/api/students/:id/tests', requireAuth, requireTeacher, async (req, res) => {
-  const { name, subject, bottomLine } = req.body || {};
+  const { name, subject, bottomLine, mcqWrong, frqScore } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Test name required' });
   const subj = (subject && (subject === 'AP CSA' || subject === 'AP CSP')) ? subject : 'AP CSA';
   const bl = bottomLine ?? (subj === 'AP CSP' ? 90 : 84);
+  const mcq = mcqWrong === undefined || mcqWrong === null || mcqWrong === '' ? null : parseInt(mcqWrong, 10);
+  const frq = frqScore === undefined || frqScore === null || frqScore === '' ? null : parseFloat(frqScore);
   const maxPos = await query(`SELECT COALESCE(MAX(position), 0) + 1 AS pos FROM tests WHERE student_id = $1`, [req.params.id]);
   const pos = maxPos.rows[0].pos;
   const { rows } = await query(
-    `INSERT INTO tests (student_id, name, subject, bottom_line, position) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, subject, score, bottom_line, position`,
-    [req.params.id, name.trim(), subj, bl, pos]
+    `INSERT INTO tests (student_id, name, subject, bottom_line, position, mcq_wrong, frq_score) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, subject, score, bottom_line, position, mcq_wrong, frq_score`,
+    [req.params.id, name.trim(), subj, bl, pos, mcq, frq]
   );
-  res.status(201).json({ id: rows[0].id, name: rows[0].name, subject: rows[0].subject, score: rows[0].score, bottomLine: rows[0].bottom_line, position: rows[0].position });
+  res.status(201).json(mapTestRow(rows[0]));
 });
 
 app.put('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (req, res) => {
-  const { name, subject, score, bottomLine } = req.body || {};
+  const { name, subject, score, bottomLine, mcqWrong, frqScore } = req.body || {};
   const updates = [];
   const params = [];
   let n = 1;
@@ -412,18 +420,24 @@ app.put('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (r
     updates.push(`bottom_line = $${n++}`);
     params.push(bottomLine);
   }
+  if (mcqWrong !== undefined) {
+    updates.push(`mcq_wrong = $${n++}`);
+    params.push(mcqWrong === null || mcqWrong === '' ? null : parseInt(mcqWrong, 10));
+  }
+  if (frqScore !== undefined) {
+    updates.push(`frq_score = $${n++}`);
+    params.push(frqScore === null || frqScore === '' ? null : parseFloat(frqScore));
+  }
   if (updates.length === 0) {
-    const { rows } = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
+    const { rows } = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Test not found' });
-    const t = rows[0];
-    return res.json({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position });
+    return res.json(mapTestRow(rows[0]));
   }
   params.push(req.params.testId, req.params.id);
   await query(`UPDATE tests SET ${updates.join(', ')} WHERE id = $${n} AND student_id = $${n + 1}`, params);
-  const { rows } = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
+  const { rows } = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Test not found' });
-  const t = rows[0];
-  res.json({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position });
+  res.json(mapTestRow(rows[0]));
 });
 
 app.delete('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (req, res) => {
@@ -444,20 +458,13 @@ app.get('/api/me', requireAuth, async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
   const s = rows[0];
-  const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position, created_at`, [s.id]);
+  const tests = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position, created_at`, [s.id]);
   res.json({
     id: s.id,
     name: s.name,
     grade: s.grade,
     subject: s.subject,
-    tests: tests.rows.map((t) => ({
-      id: t.id,
-      name: t.name,
-      subject: t.subject || 'AP CSA',
-      score: t.score != null ? Number(t.score) : null,
-      bottomLine: t.bottom_line,
-      position: t.position,
-    })),
+    tests: tests.rows.map(mapTestRow),
   });
 });
 
@@ -577,20 +584,17 @@ app.get('/api/view/link/:token', async (req, res) => {
   for (const { student_id } of studentIds.rows) {
     const s = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [student_id]);
     if (s.rows.length === 0) continue;
-    const t = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [student_id]);
+    const t = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [student_id]);
     students.push({
       id: s.rows[0].id,
       name: s.rows[0].name,
       grade: s.rows[0].grade,
       subject: s.rows[0].subject,
-      tests: t.rows.map((x) => ({
-        id: x.id,
-        name: x.name,
-        subject: x.subject || 'AP CSA',
-        score: allowViewScores ? (x.score != null ? Number(x.score) : null) : null,
-        bottomLine: x.bottom_line,
-        position: x.position,
-      })),
+      tests: t.rows.map((x) => {
+        const m = mapTestRow(x);
+        if (!allowViewScores) m.score = null;
+        return m;
+      }),
     });
   }
   res.json({ name: link[0].name, allowViewScores, students });
@@ -641,13 +645,13 @@ app.get('/api/share/:token', async (req, res) => {
   if (r.expires_at && new Date(r.expires_at) < new Date()) {
     return res.status(410).json({ error: 'Link expired' });
   }
-  const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [r.id]);
+  const tests = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [r.id]);
   res.json({
     id: r.id,
     name: r.name,
     grade: r.grade,
     subject: r.subject,
-    tests: tests.rows.map((t) => ({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })),
+    tests: tests.rows.map(mapTestRow),
   });
 });
 

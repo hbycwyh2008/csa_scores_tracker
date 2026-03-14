@@ -17,6 +17,12 @@ function runMigration() {
   `).catch(() => {}))
   .then(() => pool.query(`
     ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('teacher', 'student', 'pending'));
+  `).catch(() => {}))
+  .then(() => pool.query(`
+    ALTER TABLE tests ADD COLUMN IF NOT EXISTS mcq_wrong INTEGER;
+  `).catch(() => {}))
+  .then(() => pool.query(`
+    ALTER TABLE tests ADD COLUMN IF NOT EXISTS frq_score NUMERIC(5,2);
   `).catch(() => {}));
 }
 

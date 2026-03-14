@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS tests (
   score       NUMERIC(5,2),
   bottom_line INTEGER DEFAULT 84,
   position    INTEGER NOT NULL DEFAULT 0,
+  mcq_wrong   INTEGER,
+  frq_score   NUMERIC(5,2),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
