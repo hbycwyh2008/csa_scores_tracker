@@ -699,11 +699,11 @@
                 <span class="est-label">Trend</span>
                 <span class="est-value" id="estTrend">--</span>
             </div>
-            <div class="est-block est-mcq-frq">
+            <div class="est-block est-mcq-frq" title="按转换表：错题数≤5 即达标，有资格冲击 5 分">
                 <span class="est-label">MCQ(错≤5)</span>
                 <span class="est-value" id="estMcq">--</span>
             </div>
-            <div class="est-block est-mcq-frq">
+            <div class="est-block est-mcq-frq" title="按转换表：FRQ 卷面分≥36(CSA)/35(CSP) 即达标">
                 <span class="est-label">FRQ(达标)</span>
                 <span class="est-value" id="estFrq">--</span>
             </div>
@@ -912,9 +912,9 @@ const conversionTitles = {
     'AP CSP': 'Computer Science Principles',
 };
 const fiveMarkBottomLines = { 'AP CSA': 84, 'AP CSP': 90 };
-/** MCQ: 错5个以内达标 */
+/** 按官方转换表：MCQ 错题数≤5 即达标，才有资格冲击合成分数 5 分区间（84+） */
 const MCQ_MAX_WRONG = 5;
-/** FRQ 达标最低分（按科目，分数为 FRQ 卷面分） */
+/** 按官方转换表：FRQ Section II 卷面分达到该值即达标，与 MCQ 共同决定是否进入 5 分区间 */
 const frqMinForPass = { 'AP CSA': 36, 'AP CSP': 35 };
 
 /** 报考科目：当前学生实际有的科目（从 tests 里取）；无考试时用学生的 Subject 作为默认一门 */

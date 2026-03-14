@@ -39,6 +39,26 @@ function mapTestRow(t) {
     frqScore: t.frq_score != null ? Number(t.frq_score) : null,
   };
 }
+function parseSubjects(str) {
+  if (!str || !String(str).trim()) return null;
+  return String(str).split(',').map((s) => s.trim()).filter(Boolean);
+}
+function stringifySubjects(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  return arr.map((s) => String(s).trim()).filter(Boolean).join(',');
+}
+function mapStudentRow(s) {
+  const subjects = parseSubjects(s.subjects);
+  return {
+    id: s.id,
+    name: s.name,
+    grade: s.grade,
+    subject: s.subject || 'AP CSA',
+    subjects: subjects || (s.subject ? [s.subject] : ['AP CSA']),
+    email: s.email || null,
+    registered: !!s.user_id,
+  };
+}
 
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
@@ -290,8 +310,7 @@ app.get('/api/invite/:token', async (req, res) => {
 
 app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
   const { rows } = await query(
-    `SELECT s.id, s.name, s.grade, s.subject, s.user_id,
-            u.email
+    `SELECT s.id, s.name, s.grade, s.subject, s.subjects, s.user_id, u.email
      FROM students s
      LEFT JOIN users u ON u.id = s.user_id
      ORDER BY s.name`
@@ -303,12 +322,7 @@ app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
         [s.id]
       );
       return {
-        id: s.id,
-        name: s.name,
-        grade: s.grade,
-        subject: s.subject,
-        email: s.email || null,
-        registered: !!s.user_id,
+        ...mapStudentRow(s),
         tests: tests.rows.map(mapTestRow),
       };
     })
@@ -317,18 +331,21 @@ app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
 });
 
 app.post('/api/students', requireAuth, requireTeacher, async (req, res) => {
-  const { name, grade, subject } = req.body || {};
+  const { name, grade, subject, subjects } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
+  const subjList = Array.isArray(subjects) && subjects.length > 0 ? subjects : (subject ? [subject] : ['AP CSA']);
+  const primarySubject = subjList[0] || 'AP CSA';
+  const subjectsStr = stringifySubjects(subjList);
   const { rows } = await query(
-    `INSERT INTO students (name, grade, subject) VALUES ($1, $2, $3) RETURNING id, name, grade, subject`,
-    [name.trim(), grade || '12', subject || 'AP CSA']
+    `INSERT INTO students (name, grade, subject, subjects) VALUES ($1, $2, $3, $4) RETURNING id, name, grade, subject, subjects`,
+    [name.trim(), grade || '12', primarySubject, subjectsStr]
   );
   const s = rows[0];
-  res.status(201).json({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: [] });
+  res.status(201).json({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, subjects: parseSubjects(s.subjects) || [s.subject], tests: [] });
 });
 
 app.put('/api/students/:id', requireAuth, requireTeacher, async (req, res) => {
-  const { name, grade, subject } = req.body || {};
+  const { name, grade, subject, subjects } = req.body || {};
   const updates = [];
   const params = [];
   let n = 1;
@@ -344,20 +361,24 @@ app.put('/api/students/:id', requireAuth, requireTeacher, async (req, res) => {
     updates.push(`subject = $${n++}`);
     params.push(subject);
   }
+  if (subjects !== undefined) {
+    updates.push(`subjects = $${n++}`);
+    params.push(stringifySubjects(Array.isArray(subjects) ? subjects : [subjects]));
+  }
   if (updates.length === 0) {
-    const { rows } = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [req.params.id]);
+    const { rows } = await query(`SELECT id, name, grade, subject, subjects FROM students WHERE id = $1`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     const s = rows[0];
     const tests = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [s.id]);
-    return res.json({ ...s, tests: tests.rows.map(mapTestRow) });
+    return res.json({ ...mapStudentRow(s), tests: tests.rows.map(mapTestRow) });
   }
   params.push(req.params.id);
   await query(`UPDATE students SET ${updates.join(', ')} WHERE id = $${n}`, params);
-  const { rows } = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [req.params.id]);
+  const { rows } = await query(`SELECT id, name, grade, subject, subjects FROM students WHERE id = $1`, [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
   const tests = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [req.params.id]);
   res.json({
-    ...rows[0],
+    ...mapStudentRow(rows[0]),
     tests: tests.rows.map(mapTestRow),
   });
 });
@@ -453,7 +474,7 @@ app.delete('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async
 app.get('/api/me', requireAuth, async (req, res) => {
   if (req.user.role === 'teacher') return res.status(400).json({ error: 'Use teacher dashboard' });
   const { rows } = await query(
-    `SELECT s.id, s.name, s.grade, s.subject FROM students s WHERE s.user_id = $1`,
+    `SELECT s.id, s.name, s.grade, s.subject, s.subjects FROM students s WHERE s.user_id = $1`,
     [req.user.id]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
@@ -464,6 +485,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
     name: s.name,
     grade: s.grade,
     subject: s.subject,
+    subjects: parseSubjects(s.subjects) || (s.subject ? [s.subject] : ['AP CSA']),
     tests: tests.rows.map(mapTestRow),
   });
 });
@@ -582,14 +604,16 @@ app.get('/api/view/link/:token', async (req, res) => {
   }
   const students = [];
   for (const { student_id } of studentIds.rows) {
-    const s = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [student_id]);
+    const s = await query(`SELECT id, name, grade, subject, subjects FROM students WHERE id = $1`, [student_id]);
     if (s.rows.length === 0) continue;
+    const r = s.rows[0];
     const t = await query(`SELECT id, name, subject, score, bottom_line, position, mcq_wrong, frq_score FROM tests WHERE student_id = $1 ORDER BY position`, [student_id]);
     students.push({
-      id: s.rows[0].id,
-      name: s.rows[0].name,
-      grade: s.rows[0].grade,
-      subject: s.rows[0].subject,
+      id: r.id,
+      name: r.name,
+      grade: r.grade,
+      subject: r.subject,
+      subjects: parseSubjects(r.subjects) || (r.subject ? [r.subject] : ['AP CSA']),
       tests: t.rows.map((x) => {
         const m = mapTestRow(x);
         if (!allowViewScores) m.score = null;
