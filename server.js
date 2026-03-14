@@ -578,6 +578,10 @@ app.get('/api/share/:token', async (req, res) => {
   });
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
   res.sendFile(path.join(__dirname, 'index.html'));
