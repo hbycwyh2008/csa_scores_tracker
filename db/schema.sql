@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS students (
   name       TEXT NOT NULL,
   grade      TEXT DEFAULT '12',
   subject    TEXT DEFAULT 'AP CSA',
+  subjects   TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -33,10 +34,11 @@ CREATE TABLE IF NOT EXISTS tests (
   student_id  UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   subject     TEXT NOT NULL DEFAULT 'AP CSA',
+  exam_date   DATE,
   score       NUMERIC(5,2),
   bottom_line INTEGER DEFAULT 84,
   position    INTEGER NOT NULL DEFAULT 0,
-  mcq_wrong   INTEGER,
+  mcq_wrong   NUMERIC(5,2),
   frq_score   NUMERIC(5,2),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );

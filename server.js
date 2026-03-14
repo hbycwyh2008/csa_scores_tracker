@@ -388,7 +388,7 @@ app.post('/api/students/:id/tests', requireAuth, requireTeacher, async (req, res
   if (!name || !name.trim()) return res.status(400).json({ error: 'Test name required' });
   const subj = (subject && (subject === 'AP CSA' || subject === 'AP CSP')) ? subject : 'AP CSA';
   const bl = bottomLine ?? (subj === 'AP CSP' ? 90 : 84);
-  const mcq = mcqWrong === undefined || mcqWrong === null || mcqWrong === '' ? null : parseInt(mcqWrong, 10);
+  const mcq = mcqWrong === undefined || mcqWrong === null || mcqWrong === '' ? null : parseFloat(mcqWrong);
   const frq = frqScore === undefined || frqScore === null || frqScore === '' ? null : parseFloat(frqScore);
   const maxPos = await query(`SELECT COALESCE(MAX(position), 0) + 1 AS pos FROM tests WHERE student_id = $1`, [req.params.id]);
   const pos = maxPos.rows[0].pos;
@@ -422,7 +422,7 @@ app.put('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (r
   }
   if (mcqWrong !== undefined) {
     updates.push(`mcq_wrong = $${n++}`);
-    params.push(mcqWrong === null || mcqWrong === '' ? null : parseInt(mcqWrong, 10));
+    params.push(mcqWrong === null || mcqWrong === '' ? null : parseFloat(mcqWrong));
   }
   if (frqScore !== undefined) {
     updates.push(`frq_score = $${n++}`);

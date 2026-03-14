@@ -22,7 +22,16 @@ function runMigration() {
     ALTER TABLE tests ADD COLUMN IF NOT EXISTS mcq_wrong INTEGER;
   `).catch(() => {}))
   .then(() => pool.query(`
+    ALTER TABLE tests ALTER COLUMN mcq_wrong TYPE NUMERIC(5,2) USING mcq_wrong::numeric;
+  `).catch(() => {}))
+  .then(() => pool.query(`
     ALTER TABLE tests ADD COLUMN IF NOT EXISTS frq_score NUMERIC(5,2);
+  `).catch(() => {}))
+  .then(() => pool.query(`
+    ALTER TABLE students ADD COLUMN IF NOT EXISTS subjects TEXT;
+  `).catch(() => {}))
+  .then(() => pool.query(`
+    ALTER TABLE tests ADD COLUMN IF NOT EXISTS exam_date DATE;
   `).catch(() => {}));
 }
 

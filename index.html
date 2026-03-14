@@ -753,7 +753,7 @@
                 <tbody id="conversionBody"></tbody>
             </table>
             <div style="margin-top:16px; font-size:12px; color:#999;">
-                * Based on recent AP exam score distributions. Ranges are approximate.
+                * AP CSA: Based on College Board AP Computer Science A Practice Exam Scoring Worksheet (composite score ranges). AP CSP: approximate ranges.
             </div>
         </div>
     </div>
@@ -778,7 +778,7 @@
                 <div id="addTestError" class="error"></div>
             </div>
             <div class="footer">
-                <button type="button" onclick="closeModal('modalAddTest')" style="margin-right:8px;">Cancel</button>
+                <button type="button" onclick="closeAddTestModal()" style="margin-right:8px;">Cancel</button>
                 <button type="button" class="btn-password" onclick="submitAddTest()">Add</button>
             </div>
         </div>
@@ -890,6 +890,7 @@ let viewerLinkData = null;
 let saveScoreTimer = null;
 let saveInfoTimer = null;
 
+/** AP Score Conversion Chart - AP CSA 与官方 Practice Exam Scoring Worksheet 一致 */
 const conversionCharts = {
     'AP CSA': [
         { min: 84, max: 100, apScore: 5 },
@@ -1203,7 +1204,7 @@ function renderTable() {
         t.bottomLine = getBottomLine(subj);
     });
 
-    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Subject</th><th>5-Mark Line</th><th>Score (/100)</th><th>AP Score</th><th>MCQ(错≤5)</th><th>FRQ(达标)</th><th></th></tr>';
+    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Subject</th><th>Score (/100)</th><th>AP Score</th><th>MCQ(错≤5)</th><th>FRQ(达标)</th><th></th></tr>';
 
     var rowNum = 0;
     var rowsHTML = '';
@@ -1227,9 +1228,10 @@ function renderTable() {
         var frqOk = t.frqScore != null && t.frqScore !== '' && !isNaN(Number(t.frqScore)) && Number(t.frqScore) >= frqMin;
         var frqBadge = t.frqScore != null && t.frqScore !== '' && !isNaN(Number(t.frqScore)) ? (frqOk ? '✓' : '✗') : '—';
         var frqStatusClass = frqBadge === '✓' ? ' mcq-frq-pass' : (frqBadge === '✗' ? ' mcq-frq-fail' : '');
-        var mcqInput = editMode ? '<input type="number" min="0" step="1" value="' + mcqVal + '" placeholder="—" class="mcq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onMcqChange(this)" oninput="onMcqChange(this)" style="width:52px;">' : (mcqVal !== '' ? mcqVal : '—');
-        var frqInput = editMode ? '<input type="number" min="0" step="0.1" value="' + frqVal + '" placeholder="—" class="frq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onFrqChange(this)" oninput="onFrqChange(this)" style="width:52px;">' : (frqVal !== '' ? frqVal : '—');
-        rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name" title="' + (t.name || '').replace(/"/g, '&quot;') + '">' + (t.name || '').replace(/</g, '&lt;') + '</td><td class="td-subject">' + subj + '</td><td class="td-bl">' + bl + '</td><td class="td-score"><input type="number" min="0" max="100" step="0.1" value="' + val + '" placeholder="--" class="' + scoreClass + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onScoreChange(this)" oninput="onScoreChange(this)" ' + scoreDisabled + '></td><td class="td-ap">' + apBadge + '</td><td class="td-mcq">' + mcqInput + ' <span class="mcq-frq-status' + mcqStatusClass + '">' + mcqBadge + '</span></td><td class="td-frq">' + frqInput + ' <span class="mcq-frq-status' + frqStatusClass + '">' + frqBadge + '</span></td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
+        var mcqInput = editMode ? '<input type="number" min="0" step="0.1" value="' + mcqVal + '" placeholder="—" class="mcq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onMcqChange(this)" oninput="onMcqChange(this)" style="width:52px;">' : (mcqVal !== '' && mcqVal !== undefined ? mcqVal : '—');
+        var frqInput = editMode ? '<input type="number" min="0" step="0.1" value="' + frqVal + '" placeholder="—" class="frq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onFrqChange(this)" oninput="onFrqChange(this)" style="width:52px;">' : (frqVal !== '' && frqVal !== undefined ? frqVal : '—');
+        var nameCell = editMode ? '<input type="text" class="test-name-input" value="' + (t.name || '').replace(/"/g, '&quot;') + '" placeholder="考试名称" data-index="' + i + '" data-test-id="' + testId + '" onchange="onTestNameChange(this)" onblur="onTestNameChange(this)" style="width:100%;min-width:80px;padding:4px 6px;box-sizing:border-box;">' : '<span title="' + (t.name || '').replace(/"/g, '&quot;') + '">' + (t.name || '').replace(/</g, '&lt;') + '</span>';
+        rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name">' + nameCell + '</td><td class="td-subject">' + subj + '</td><td class="td-score"><input type="number" min="0" max="100" step="0.1" value="' + val + '" placeholder="--" class="' + scoreClass + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onScoreChange(this)" oninput="onScoreChange(this)" ' + scoreDisabled + '></td><td class="td-ap">' + apBadge + '</td><td class="td-mcq">' + mcqInput + ' <span class="mcq-frq-status' + mcqStatusClass + '">' + mcqBadge + '</span></td><td class="td-frq">' + frqInput + ' <span class="mcq-frq-status' + frqStatusClass + '">' + frqBadge + '</span></td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
     });
 
     var visTests = getVisibleTests();
@@ -1242,7 +1244,7 @@ function renderTable() {
     var frqPassCount = visTests.filter(function(t) { var v = t.frqScore, s = t.subject || 'AP CSA'; var min = frqMinForPass[s] != null ? frqMinForPass[s] : 36; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) >= min; }).length;
     var mcqSummary = 'MCQ 达标: ' + mcqPassCount + '/' + visTests.length;
     var frqSummary = 'FRQ 达标: ' + frqPassCount + '/' + visTests.length;
-    rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>—</td><td>' + (avg !== null ? avg.toFixed(1) : '--') + '</td><td>' + apBadgeSummary + '</td><td colspan="2">' + mcqSummary + ' &nbsp; ' + frqSummary + '</td><td></td></tr>';
+    rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>' + (avg !== null ? avg.toFixed(1) : '--') + '</td><td>' + apBadgeSummary + '</td><td colspan="2">' + mcqSummary + ' &nbsp; ' + frqSummary + '</td><td></td></tr>';
     tbody.innerHTML = rowsHTML;
 }
 
@@ -1266,6 +1268,21 @@ async function deleteTestByIndex(index) {
 function deleteTest(index) { deleteTestByIndex(index); }
 
 var saveMcqFrqTimer = null;
+var saveNameTimer = null;
+function onTestNameChange(input) {
+    const idx = parseInt(input.dataset.index, 10);
+    const val = input.value.trim();
+    tests[idx].name = val || (tests[idx].name || '');
+    if (sharedMode || !students[currentStudentIndex] || !students[currentStudentIndex].id) return;
+    const testId = input.dataset.testId;
+    if (!testId) return;
+    clearTimeout(saveNameTimer);
+    saveNameTimer = setTimeout(async () => {
+        const s = students[currentStudentIndex];
+        const res = await api('PUT', '/api/students/' + s.id + '/tests/' + testId, { name: tests[idx].name || 'Test' });
+        if (res && !res.error) showToast('已保存', 'success');
+    }, 600);
+}
 function onScoreChange(input) {
     const idx = parseInt(input.dataset.index, 10);
     const val = input.value.trim();
@@ -1284,7 +1301,7 @@ function onScoreChange(input) {
 function onMcqChange(input) {
     const idx = parseInt(input.dataset.index, 10);
     const val = input.value.trim();
-    tests[idx].mcqWrong = val === '' ? null : parseInt(val, 10);
+    tests[idx].mcqWrong = val === '' ? null : parseFloat(val);
     if (isNaN(tests[idx].mcqWrong)) tests[idx].mcqWrong = null;
     updateAll();
     if (sharedMode || !students[currentStudentIndex] || !students[currentStudentIndex].id) return;
@@ -1536,14 +1553,29 @@ function updateCharts() {
 }
 
 // ===================== ADD / REMOVE TEST =====================
-async function addTest() {
-    const name = prompt('Enter test name:', 'Test ' + (tests.length + 1));
-    if (!name) return;
+function openAddTestModal() {
+    document.getElementById('addTestName').value = 'Test ' + (tests.length + 1);
+    document.getElementById('addTestSubject').value = getCurrentSubject();
+    document.getElementById('addTestError').textContent = '';
+    document.getElementById('modalAddTest').classList.remove('hidden');
+}
+function closeAddTestModal() {
+    document.getElementById('modalAddTest').classList.add('hidden');
+}
+async function submitAddTest() {
+    const name = document.getElementById('addTestName').value.trim();
+    document.getElementById('addTestError').textContent = '';
+    if (!name) {
+        document.getElementById('addTestError').textContent = '请输入考试名称';
+        return;
+    }
     const s = students[currentStudentIndex];
     if (!s || !s.id) return;
-    const data = await api('POST', '/api/students/' + s.id + '/tests', { name, bottomLine: getBottomLine() });
+    const subject = document.getElementById('addTestSubject').value || 'AP CSA';
+    const bottomLine = subject === 'AP CSP' ? 90 : 84;
+    const data = await api('POST', '/api/students/' + s.id + '/tests', { name, subject, bottomLine });
     if (data && data.error) {
-        showToast(data.error, 'error');
+        document.getElementById('addTestError').textContent = data.error;
         return;
     }
     if (data) {
@@ -1552,13 +1584,18 @@ async function addTest() {
             name: data.name,
             subject: data.subject || 'AP CSA',
             score: data.score != null ? data.score : null,
-            bottomLine: data.bottomLine != null ? data.bottomLine : getBottomLine(),
+            bottomLine: data.bottomLine != null ? data.bottomLine : bottomLine,
             position: data.position,
             mcqWrong: data.mcqWrong,
             frqScore: data.frqScore
         });
+        closeAddTestModal();
         updateAll();
+        showToast('已添加', 'success');
     }
+}
+function addTest() {
+    openAddTestModal();
 }
 
 async function resetAll() {
