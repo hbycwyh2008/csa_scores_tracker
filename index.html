@@ -711,7 +711,7 @@
                 <span class="est-label">MCQ (Pass)</span>
                 <span class="est-value" id="estMcq">--</span>
             </div>
-            <div class="est-block est-mcq-frq" title="Per conversion table: FRQ ≥36 (CSA) / ≥35 (CSP) = pass">
+            <div class="est-block est-mcq-frq" title="FRQ pass: score &gt; 12.5×1.8">
                 <span class="est-label">FRQ (Pass)</span>
                 <span class="est-value" id="estFrq">--</span>
             </div>
@@ -789,7 +789,7 @@
             </div>
             <div class="footer">
                 <button type="button" onclick="closeAddTestModal()" style="margin-right:8px;">Cancel</button>
-                <button type="button" class="btn-password" onclick="submitAddTest()">Add</button>
+                <button type="button" id="addTestSubmitBtn" class="btn-password" onclick="submitAddTest()">Add</button>
             </div>
         </div>
     </div>
@@ -1629,6 +1629,8 @@ function openAddTestModal() {
     var today = new Date();
     document.getElementById('addTestExamDate').value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     document.getElementById('addTestError').textContent = '';
+    var btn = document.getElementById('addTestSubmitBtn');
+    if (btn) btn.disabled = false;
     document.getElementById('modalAddTest').classList.remove('hidden');
 }
 function closeAddTestModal() {
@@ -1636,38 +1638,59 @@ function closeAddTestModal() {
 }
 async function submitAddTest() {
     const name = document.getElementById('addTestName').value.trim();
-    document.getElementById('addTestError').textContent = '';
+    const errEl = document.getElementById('addTestError');
+    errEl.textContent = '';
     if (!name) {
-        document.getElementById('addTestError').textContent = 'Please enter test name';
+        errEl.textContent = 'Please enter test name';
         return;
     }
     const s = students[currentStudentIndex];
-    if (!s || !s.id) return;
+    if (!s || !s.id) {
+        errEl.textContent = 'No student selected or student not saved. Please select a student.';
+        showToast('Select a student first', 'error');
+        return;
+    }
     const subject = document.getElementById('addTestSubject').value || 'AP CSA';
     const examDateVal = document.getElementById('addTestExamDate').value ? document.getElementById('addTestExamDate').value.trim().slice(0, 10) : null;
     const bottomLine = subject === 'AP CSP' ? 90 : 84;
-    const data = await api('POST', '/api/students/' + s.id + '/tests', { name, subject, bottomLine, examDate: examDateVal });
-    if (data && data.error) {
-        document.getElementById('addTestError').textContent = data.error;
+    var btn = document.getElementById('addTestSubmitBtn');
+    if (btn) btn.disabled = true;
+    var data;
+    try {
+        data = await api('POST', '/api/students/' + s.id + '/tests', { name, subject, bottomLine, examDate: examDateVal });
+    } catch (e) {
+        errEl.textContent = 'Network error. Please try again.';
+        showToast('Request failed', 'error');
+        if (btn) btn.disabled = false;
         return;
     }
-    if (data) {
-        tests.push({
-            id: data.id,
-            name: data.name,
-            subject: data.subject || 'AP CSA',
-            examDate: data.examDate || null,
-            score: data.score != null ? data.score : null,
-            bottomLine: data.bottomLine != null ? data.bottomLine : bottomLine,
-            position: data.position,
-            mcqWrong: data.mcqWrong,
-            frqScore: data.frqScore
-        });
-        sortTestsByExamDate();
-        closeAddTestModal();
-        updateAll();
-        showToast('Added', 'success');
+    if (btn) btn.disabled = false;
+    if (data && data.error) {
+        errEl.textContent = data.error;
+        showToast(data.error, 'error');
+        return;
     }
+    if (!data) {
+        errEl.textContent = 'Request failed. Please sign in again or try again.';
+        showToast('Request failed', 'error');
+        return;
+    }
+    if (btn) btn.disabled = true;
+    tests.push({
+        id: data.id,
+        name: data.name,
+        subject: data.subject || 'AP CSA',
+        examDate: data.examDate || null,
+        score: data.score != null ? data.score : null,
+        bottomLine: data.bottomLine != null ? data.bottomLine : bottomLine,
+        position: data.position,
+        mcqWrong: data.mcqWrong,
+        frqScore: data.frqScore
+    });
+    sortTestsByExamDate();
+    closeAddTestModal();
+    updateAll();
+    showToast('Added', 'success');
 }
 function addTest() {
     openAddTestModal();
