@@ -248,6 +248,46 @@
         .score-above { color: #16a34a !important; }
         .score-below { color: #dc2626 !important; }
 
+        /* Subject filter pills */
+        .subject-filter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .subject-filter-label {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .subject-filter-pills {
+            display: inline-flex;
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 4px;
+            gap: 2px;
+        }
+        .subject-pill {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            background: transparent;
+            color: #64748b;
+            transition: background 0.15s, color 0.15s;
+        }
+        .subject-pill:hover {
+            background: #e2e8f0;
+            color: #334155;
+        }
+        .subject-pill.active {
+            background: #fff;
+            color: #1e40af;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
+
         /* Charts Section */
         .charts-conversion-section {
             display: grid;
@@ -493,10 +533,9 @@
         .login-card input { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
         .login-card button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
         .login-card .btn-password { background: linear-gradient(135deg, #1a3c6e 0%, #2563eb 100%); color: #fff; }
-        .login-card .btn-google { background: #fff; border: 1px solid #d1d5db; color: #333; margin-top: 12px; }
-        .login-card .btn-google:hover { background: #f8fafc; }
+        .login-card .btn-link { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 13px; text-decoration: underline; padding: 0; }
+        .login-card .btn-link:hover { color: #1d4ed8; }
         .login-card .error { color: #dc2626; font-size: 13px; margin-top: 8px; text-align: center; }
-        .login-divider { text-align: center; margin: 16px 0; color: #94a3b8; font-size: 12px; }
         .auth-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 8px 20px; background: rgba(0,0,0,0.1); font-size: 13px; }
         .auth-bar .name { font-weight: 600; }
         .auth-bar .role-badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; }
@@ -522,16 +561,31 @@
 <body>
 
 <div id="loginOverlay">
-    <div class="login-card">
+    <div class="login-card" id="loginCard">
         <h2>AP Score Tracker</h2>
         <form id="loginForm" onsubmit="return handlePasswordLogin(event)">
-            <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" />
+            <input type="text" id="loginUsername" placeholder="Username or email" autocomplete="username" />
             <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
             <div id="loginError" class="error"></div>
-            <button type="submit" class="btn-password">Sign in (Teacher)</button>
+            <button type="submit" class="btn-password">Sign in</button>
         </form>
-        <div class="login-divider">— or —</div>
-        <button type="button" class="btn-google" onclick="goGoogleLogin()">Sign in with Google</button>
+        <div style="margin-top:14px;text-align:center;">
+            <button type="button" class="btn-link" onclick="showRegisterForm()">Register with email</button>
+        </div>
+    </div>
+    <div class="login-card hidden" id="registerCard">
+        <h2>Register</h2>
+        <form id="registerForm" onsubmit="return handleRegister(event)">
+            <input type="email" id="registerEmail" placeholder="Email" autocomplete="email" />
+            <input type="password" id="registerPassword" placeholder="Password (min 6)" autocomplete="new-password" />
+            <input type="text" id="registerDisplayName" placeholder="Display name (optional)" autocomplete="name" />
+            <div id="registerError" class="error"></div>
+            <button type="submit" class="btn-password">Submit registration</button>
+        </form>
+        <div style="margin-top:14px;text-align:center;font-size:13px;color:#64748b;">After submission, the teacher will review and link your account to a student.</div>
+        <div style="margin-top:10px;text-align:center;">
+            <button type="button" class="btn-link" onclick="showLoginForm()">Back to sign in</button>
+        </div>
     </div>
 </div>
 
@@ -597,11 +651,14 @@
         <span class="locked-hint" id="lockedHint">View Only</span>
     </div>
 
-    <!-- Subject filter: which subjects to show for this student -->
-    <div class="subject-filter" id="subjectFilter" style="margin-bottom:10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <span style="color:#94a3b8; font-size:13px;">显示科目:</span>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="filterAPCSA" checked onchange="onSubjectFilterChange()"> AP CSA</label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="filterAPCSP" checked onchange="onSubjectFilterChange()"> AP CSP</label>
+    <!-- Subject filter: friendly pill switcher -->
+    <div class="subject-filter" id="subjectFilter" data-filter="all" style="margin-bottom:14px;">
+        <span class="subject-filter-label">显示科目</span>
+        <div class="subject-filter-pills">
+            <button type="button" class="subject-pill active" data-value="all" onclick="setSubjectFilter('all')">全部</button>
+            <button type="button" class="subject-pill" data-value="AP CSA" onclick="setSubjectFilter('AP CSA')">AP CSA</button>
+            <button type="button" class="subject-pill" data-value="AP CSP" onclick="setSubjectFilter('AP CSP')">AP CSP</button>
+        </div>
     </div>
     <!-- Score Table -->
     <div class="table-container" id="tableContainer">
@@ -708,9 +765,14 @@
         </div>
     </div>
     <div id="modalAccounts" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('modalAccounts')">
-        <div class="modal-box" style="max-width:640px;">
+        <div class="modal-box" style="max-width:680px;">
             <h3>Manage Accounts</h3>
             <div class="body">
+                <div id="accountsPendingSection" style="margin-bottom:20px;display:none;">
+                    <div style="font-weight:600;margin-bottom:8px;">待审核注册 (Pending)</div>
+                    <div id="accountsPendingList"></div>
+                </div>
+                <div style="font-weight:600;margin-bottom:8px;">学生账号 (Students)</div>
                 <table class="score-table" style="font-size:12px;"><thead><tr><th>Student</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody id="accountsTableBody"></tbody></table>
             </div>
@@ -759,6 +821,9 @@ async function api(method, url, body) {
     const r = await fetch(url, opts);
     if (r.status === 401) {
         setToken(null);
+        showLoginForm();
+        if (document.getElementById('loginCard')) document.getElementById('loginCard').classList.remove('hidden');
+        if (document.getElementById('registerCard')) document.getElementById('registerCard').classList.add('hidden');
         document.getElementById('loginOverlay').classList.remove('hidden');
         document.getElementById('appContainer').style.display = 'none';
         showToast('Session expired. Please sign in again.', 'error');
@@ -811,11 +876,21 @@ const conversionTitles = {
 };
 const fiveMarkBottomLines = { 'AP CSA': 84, 'AP CSP': 90 };
 
+function setSubjectFilter(value) {
+    var el = document.getElementById('subjectFilter');
+    if (!el) return;
+    el.setAttribute('data-filter', value);
+    document.querySelectorAll('.subject-pill').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-value') === value);
+    });
+    updateAll();
+}
 function getVisibleSubjects() {
-    const list = [];
-    if (document.getElementById('filterAPCSA') && document.getElementById('filterAPCSA').checked) list.push('AP CSA');
-    if (document.getElementById('filterAPCSP') && document.getElementById('filterAPCSP').checked) list.push('AP CSP');
-    return list.length ? list : ['AP CSA', 'AP CSP'];
+    var el = document.getElementById('subjectFilter');
+    var filter = (el && el.getAttribute('data-filter')) || 'all';
+    if (filter === 'all') return ['AP CSA', 'AP CSP'];
+    if (filter === 'AP CSA' || filter === 'AP CSP') return [filter];
+    return ['AP CSA', 'AP CSP'];
 }
 function onSubjectFilterChange() {
     updateAll();
@@ -829,8 +904,17 @@ function getCurrentSubject() {
     const el = document.getElementById('subjectSelect');
     return (el && el.value) || (currentStudentIndex < students.length && students[currentStudentIndex].subject) || 'AP CSA';
 }
+/** Subject used for conversion chart and chart titles: follows subject filter when single subject. */
+function getConversionChartSubject() {
+    const el = document.getElementById('subjectFilter');
+    const filter = (el && el.getAttribute('data-filter')) || 'all';
+    if (filter === 'AP CSA' || filter === 'AP CSP') return filter;
+    const visible = getVisibleSubjects();
+    if (visible.length === 1) return visible[0];
+    return getCurrentSubject();
+}
 function getConversionChart(subject) {
-    return conversionCharts[subject || getCurrentSubject()] || conversionCharts['AP CSA'];
+    return conversionCharts[subject || getConversionChartSubject()] || conversionCharts['AP CSA'];
 }
 function getBottomLine(subject) {
     return fiveMarkBottomLines[subject || getCurrentSubject()] || 84;
@@ -990,8 +1074,8 @@ let lineChartInstance = null;
 
 // ===================== CONVERSION TABLE =====================
 function renderConversionTable(highlightScore) {
-    const chart = getConversionChart();
-    const subject = getCurrentSubject();
+    const subject = getConversionChartSubject();
+    const chart = getConversionChart(subject);
     document.getElementById('conversionTitle').textContent = conversionTitles[subject] || subject;
     const tbody = document.getElementById('conversionBody');
     tbody.innerHTML = '';
@@ -1154,15 +1238,17 @@ function updateBanner() {
 
 // ===================== CHARTS =====================
 function updateCharts() {
-    const subject = getCurrentSubject();
+    const subject = getConversionChartSubject();
     document.getElementById('barChartTitle').textContent = subject + ' Score Bar Chart';
     document.getElementById('lineChartTitle').textContent = subject + ' Score Trend (Line Chart)';
 
+    const visible = getVisibleSubjects();
     const labels = [];
     const scores = [];
     const bottomLines = [];
 
     tests.forEach(t => {
+        if (visible.length > 0 && !visible.includes(t.subject || 'AP CSA')) return;
         if (t.score !== null && !isNaN(t.score)) {
             // Split long labels into multiple lines for chart readability
             let label = t.name;
@@ -1420,9 +1506,16 @@ function updateAll() {
 }
 
 // ===================== AUTH & ROUTING =====================
-function goGoogleLogin() {
-    const state = (window.location.pathname || '').match(/^\/invite\/([^/]+)/) ? 'invite::' + (window.location.pathname.match(/^\/invite\/([^/]+)/)[1]) : 'login';
-    window.location.href = '/api/auth/google?state=' + encodeURIComponent(state);
+function showRegisterForm() {
+    document.getElementById('loginCard').classList.add('hidden');
+    document.getElementById('registerCard').classList.remove('hidden');
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('registerError').textContent = '';
+}
+function showLoginForm() {
+    document.getElementById('registerCard').classList.add('hidden');
+    document.getElementById('loginCard').classList.remove('hidden');
+    document.getElementById('registerError').textContent = '';
 }
 function handlePasswordLogin(e) {
     e.preventDefault();
@@ -1444,8 +1537,33 @@ function handlePasswordLogin(e) {
     }).catch(() => { document.getElementById('loginError').textContent = 'Network error'; });
     return false;
 }
+async function handleRegister(e) {
+    e.preventDefault();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const displayName = document.getElementById('registerDisplayName').value.trim();
+    document.getElementById('registerError').textContent = '';
+    if (!email) { document.getElementById('registerError').textContent = 'Email required'; return false; }
+    if (password.length < 6) { document.getElementById('registerError').textContent = 'Password at least 6 characters'; return false; }
+    const data = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, displayName: displayName || undefined }),
+    }).then(r => r.json());
+    if (data.error) {
+        document.getElementById('registerError').textContent = data.error;
+        return false;
+    }
+    document.getElementById('registerError').textContent = '';
+    showToast(data.message || 'Registration submitted. Wait for teacher approval.', 'success');
+    showLoginForm();
+    return false;
+}
 function doLogout() {
     setToken(null);
+    showLoginForm();
+    document.getElementById('loginCard').classList.remove('hidden');
+    document.getElementById('registerCard').classList.add('hidden');
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('appContainer').style.display = 'none';
 }
@@ -1535,7 +1653,7 @@ async function initInvitePage(token) {
         container.innerHTML = '<div class="link-error-page"><h2>This invite link has expired. Ask your teacher for a new one.</h2></div>';
         return;
     }
-    container.innerHTML = '<div class="invite-page"><h2>Invite: ' + (data.studentName || '').replace(/</g, '&lt;') + '</h2><p>Sign in with Google to activate your account.</p><button type="button" class="btn-google" onclick="goGoogleLogin()">Sign in with Google</button></div>';
+    container.innerHTML = '<div class="invite-page"><h2>Invite: ' + (data.studentName || '').replace(/</g, '&lt;') + '</h2><p>Contact your teacher to get an invite link to activate your account.</p></div>';
 }
 
 // Viewer link page (public)
@@ -1605,16 +1723,54 @@ async function openAccountsModal() {
     const users = await api('GET', '/api/users');
     const studentsList = await api('GET', '/api/students');
     if (!users || !studentsList) return;
-    const tbody = document.getElementById('accountsTableBody');
+    var pending = (users || []).filter(function(u) { return u.role === 'pending'; });
+    var pendingSection = document.getElementById('accountsPendingSection');
+    var pendingList = document.getElementById('accountsPendingList');
+    if (pending.length > 0) {
+        pendingSection.style.display = 'block';
+        pendingList.innerHTML = pending.map(function(u) {
+            var dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '';
+            var opts = studentsList.map(function(s) {
+                return '<option value="' + s.id + '">' + (s.name || '').replace(/</g, '&lt;') + '</option>';
+            }).join('');
+            return '<div class="accounts-pending-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #e5e7eb;">' +
+                '<span style="flex:1;min-width:140px;">' + (u.email || '').replace(/</g, '&lt;') + '</span>' +
+                '<span style="color:#64748b;font-size:12px;">' + (u.displayName || '').replace(/</g, '&lt;') + '</span>' +
+                '<span style="font-size:12px;color:#94a3b8;">' + dateStr + '</span>' +
+                '<select id="approveSelect_' + u.id + '" style="padding:4px 8px;min-width:120px;">' + opts + '</select>' +
+                '<button type="button" class="btn-password" style="padding:4px 10px;font-size:12px;" onclick="approveRegistration(\'' + u.id + '\')">配置学生并通过</button>' +
+                '<button type="button" style="padding:4px 10px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;" onclick="rejectRegistration(\'' + u.id + '\')">拒绝</button>' +
+                '</div>';
+        }).join('');
+    } else {
+        pendingSection.style.display = 'none';
+    }
+    var tbody = document.getElementById('accountsTableBody');
     tbody.innerHTML = '';
-    studentsList.forEach(s => {
-        const u = users.find(u => u.studentId === s.id);
-        const tr = document.createElement('tr');
+    studentsList.forEach(function(s) {
+        var u = users.find(function(x) { return x.studentId === s.id; });
+        var tr = document.createElement('tr');
         tr.innerHTML = '<td>' + (s.name || '').replace(/</g, '&lt;') + '</td><td>' + (u ? (u.email || 'Registered') : 'Pending invite') + '</td><td>' +
             (!u ? '<button type="button" onclick="generateInviteForStudent(\'' + s.id + '\')">Generate Invite Link</button>' : '') + '</td>';
         tbody.appendChild(tr);
     });
     document.getElementById('modalAccounts').classList.remove('hidden');
+}
+async function approveRegistration(userId) {
+    var sel = document.getElementById('approveSelect_' + userId);
+    var studentId = sel ? sel.value : null;
+    if (!studentId) { showToast('Please select a student.', 'error'); return; }
+    var data = await api('POST', '/api/users/' + userId + '/approve', { studentId: studentId });
+    if (data && data.error) { showToast(data.error, 'error'); return; }
+    showToast('Approved and linked to student.', 'success');
+    openAccountsModal();
+}
+async function rejectRegistration(userId) {
+    if (!confirm('Reject this registration? The account will be removed.')) return;
+    var data = await api('POST', '/api/users/' + userId + '/reject');
+    if (data && data.error) { showToast(data.error, 'error'); return; }
+    showToast('Registration rejected.', 'success');
+    openAccountsModal();
 }
 async function generateInviteForStudent(studentId) {
     const data = await api('POST', '/api/students/' + studentId + '/invite');
@@ -1758,7 +1914,7 @@ async function shareLinkForStudent() {
         document.getElementById('loginError').textContent =
             error === 'no-account' ? 'No account found. Use your invite link or sign in as teacher.' :
             error === 'invite_expired' ? 'Invite expired or already used.' :
-            error === 'google_not_configured' ? 'Google sign-in is not configured. Use username and password.' : 'Sign-in failed.';
+            'Sign-in failed.';
     }
     if (path.match(/^\/invite\/([^/]+)/)) {
         initInvitePage(path.match(/^\/invite\/([^/]+)/)[1]);

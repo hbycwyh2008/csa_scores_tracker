@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT,
   google_id    TEXT UNIQUE,
   display_name TEXT NOT NULL,
-  role         TEXT NOT NULL CHECK (role IN ('teacher', 'student')),
+  role         TEXT NOT NULL CHECK (role IN ('teacher', 'student', 'pending')),
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 

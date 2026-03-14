@@ -11,6 +11,12 @@ function runMigration() {
   `).catch(() => {})
   .then(() => pool.query(`
     ALTER TABLE viewer_links ADD COLUMN IF NOT EXISTS allow_view_scores BOOLEAN NOT NULL DEFAULT true;
+  `).catch(() => {}))
+  .then(() => pool.query(`
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+  `).catch(() => {}))
+  .then(() => pool.query(`
+    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('teacher', 'student', 'pending'));
   `).catch(() => {}));
 }
 

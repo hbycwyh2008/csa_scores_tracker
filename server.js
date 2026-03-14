@@ -206,21 +206,43 @@ app.get(
   }
 );
 
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, displayName } = req.body || {};
+  const emailTrim = (email || '').trim().toLowerCase();
+  if (!emailTrim || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  const { rows: existing } = await query(`SELECT id FROM users WHERE email = $1 OR username = $1`, [emailTrim, emailTrim]);
+  if (existing.length > 0) {
+    return res.status(400).json({ error: 'Email already registered' });
+  }
+  const hash = bcrypt.hashSync(password, 10);
+  await query(
+    `INSERT INTO users (email, username, password_hash, display_name, role) VALUES ($1, $2, $3, $4, 'pending')`,
+    [emailTrim, emailTrim, hash, (displayName || emailTrim).trim() || emailTrim]
+  );
+  res.status(201).json({ message: 'Registration submitted. Wait for teacher approval and account linking.' });
+});
+
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
+    return res.status(400).json({ error: 'Username or email and password required' });
   }
+  const key = username.trim().toLowerCase();
   const { rows } = await query(
-    `SELECT id, password_hash, display_name, role FROM users WHERE username = $1`,
-    [username.trim()]
+    `SELECT id, password_hash, display_name, role FROM users WHERE username = $1 OR (email IS NOT NULL AND email = $1)`,
+    [key]
   );
   if (rows.length === 0 || !bcrypt.compareSync(password, rows[0].password_hash)) {
-    return res.status(401).json({ error: 'Invalid username or password' });
+    return res.status(401).json({ error: 'Invalid username/email or password' });
   }
   const u = rows[0];
-  if (u.role === 'student') {
-    return res.status(401).json({ error: 'Students must sign in with Google' });
+  if (u.role === 'pending') {
+    return res.status(401).json({ error: 'Registration pending approval. Please wait for the teacher to approve and link your account to a student.' });
   }
   const studentRow = await query(`SELECT id FROM students WHERE user_id = $1`, [u.id]);
   const token = issueToken({
@@ -441,7 +463,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
 
 app.get('/api/users', requireAuth, requireTeacher, async (req, res) => {
   const { rows } = await query(
-    `SELECT id, email, display_name, role FROM users`
+    `SELECT id, email, display_name, role, created_at FROM users`
   );
   const withStudent = await Promise.all(
     rows.map(async (u) => {
@@ -450,7 +472,36 @@ app.get('/api/users', requireAuth, requireTeacher, async (req, res) => {
       return { ...u, student_id: s.rows[0]?.id || null };
     })
   );
-  res.json(withStudent.map(({ id, email, display_name, role, student_id }) => ({ id, email, displayName: display_name, role, studentId: student_id })));
+  res.json(withStudent.map(({ id, email, display_name, role, student_id, created_at }) => ({
+    id,
+    email,
+    displayName: display_name,
+    role,
+    studentId: student_id,
+    createdAt: created_at ? created_at.toISOString() : null,
+  })));
+});
+
+app.post('/api/users/:id/approve', requireAuth, requireTeacher, async (req, res) => {
+  const { studentId } = req.body || {};
+  if (!studentId) return res.status(400).json({ error: 'studentId required' });
+  const { rows: u } = await query(`SELECT id, role FROM users WHERE id = $1`, [req.params.id]);
+  if (u.length === 0) return res.status(404).json({ error: 'User not found' });
+  if (u[0].role !== 'pending') return res.status(400).json({ error: 'User is not pending approval' });
+  const { rows: s } = await query(`SELECT id FROM students WHERE id = $1`, [studentId]);
+  if (s.length === 0) return res.status(404).json({ error: 'Student not found' });
+  await query(`UPDATE students SET user_id = NULL WHERE user_id = $1`, [u[0].id]);
+  await query(`UPDATE students SET user_id = $1 WHERE id = $2`, [u[0].id, studentId]);
+  await query(`UPDATE users SET role = 'student' WHERE id = $1`, [u[0].id]);
+  res.json({ success: true, studentId });
+});
+
+app.post('/api/users/:id/reject', requireAuth, requireTeacher, async (req, res) => {
+  const { rows } = await query(`SELECT id, role FROM users WHERE id = $1`, [req.params.id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+  if (rows[0].role !== 'pending') return res.status(400).json({ error: 'User is not pending' });
+  await query(`DELETE FROM users WHERE id = $1`, [req.params.id]);
+  res.json({ success: true });
 });
 
 app.get('/api/viewer-links', requireAuth, requireTeacher, async (req, res) => {
