@@ -555,6 +555,7 @@
         <span class="shared-student-name" id="sharedStudentName"></span>
         <span class="shared-subject" id="sharedSubject"></span>
         <div style="font-size:12px;color:#6b7280;margin-top:4px;">Score Report (View Only)</div>
+        <div id="viewerNoScoreHint" style="display:none;margin-top:8px;padding:8px;background:#fef3c7;color:#92400e;border-radius:6px;font-size:13px;"></div>
     </div>
 
     <!-- Student Info -->
@@ -596,6 +597,12 @@
         <span class="locked-hint" id="lockedHint">View Only</span>
     </div>
 
+    <!-- Subject filter: which subjects to show for this student -->
+    <div class="subject-filter" id="subjectFilter" style="margin-bottom:10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span style="color:#94a3b8; font-size:13px;">显示科目:</span>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="filterAPCSA" checked onchange="onSubjectFilterChange()"> AP CSA</label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="filterAPCSP" checked onchange="onSubjectFilterChange()"> AP CSP</label>
+    </div>
     <!-- Score Table -->
     <div class="table-container" id="tableContainer">
         <table class="score-table" id="scoreTable">
@@ -663,6 +670,24 @@
     </div>
 
     <!-- Modals -->
+    <div id="modalAddTest" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('modalAddTest')">
+        <div class="modal-box">
+            <h3>Add Test</h3>
+            <div class="body">
+                <label>Test name *</label><input type="text" id="addTestName" placeholder="e.g. Mock 1" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
+                <label>Subject</label>
+                <select id="addTestSubject" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;">
+                    <option value="AP CSA">AP CSA</option>
+                    <option value="AP CSP">AP CSP</option>
+                </select>
+                <div id="addTestError" class="error"></div>
+            </div>
+            <div class="footer">
+                <button type="button" onclick="closeModal('modalAddTest')" style="margin-right:8px;">Cancel</button>
+                <button type="button" class="btn-password" onclick="submitAddTest()">Add</button>
+            </div>
+        </div>
+    </div>
     <div id="modalAddStudent" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('modalAddStudent')">
         <div class="modal-box">
             <h3>Add Student</h3>
@@ -701,6 +726,9 @@
                     <input type="text" id="newViewerLinkName" placeholder="Link name (e.g. 行政老师)" style="width:100%;max-width:240px;padding:6px 8px;margin-bottom:10px;box-sizing:border-box;display:block;" />
                     <div style="font-size:13px;margin-bottom:6px;">Select students this link can see:</div>
                     <div id="viewerLinkCreateStudents" style="max-height:180px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px;background:#fff;"></div>
+                    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;">
+                        <input type="checkbox" id="newViewerLinkAllowScores" checked /> 允许该老师查看对应学生成绩
+                    </label>
                     <button type="button" class="btn-password" style="margin-top:10px;width:auto;padding:6px 16px;" onclick="createViewerLink()">Create link</button>
                 </div>
                 <div style="font-weight:600;margin-bottom:8px;">Existing links</div>
@@ -783,15 +811,29 @@ const conversionTitles = {
 };
 const fiveMarkBottomLines = { 'AP CSA': 84, 'AP CSP': 90 };
 
+function getVisibleSubjects() {
+    const list = [];
+    if (document.getElementById('filterAPCSA') && document.getElementById('filterAPCSA').checked) list.push('AP CSA');
+    if (document.getElementById('filterAPCSP') && document.getElementById('filterAPCSP').checked) list.push('AP CSP');
+    return list.length ? list : ['AP CSA', 'AP CSP'];
+}
+function onSubjectFilterChange() {
+    updateAll();
+}
+function getVisibleTests() {
+    const visible = getVisibleSubjects();
+    return tests.filter(function(t) { return visible.includes(t.subject || 'AP CSA'); });
+}
+
 function getCurrentSubject() {
     const el = document.getElementById('subjectSelect');
     return (el && el.value) || (currentStudentIndex < students.length && students[currentStudentIndex].subject) || 'AP CSA';
 }
-function getConversionChart() {
-    return conversionCharts[getCurrentSubject()] || conversionCharts['AP CSA'];
+function getConversionChart(subject) {
+    return conversionCharts[subject || getCurrentSubject()] || conversionCharts['AP CSA'];
 }
-function getBottomLine() {
-    return fiveMarkBottomLines[getCurrentSubject()] || 84;
+function getBottomLine(subject) {
+    return fiveMarkBottomLines[subject || getCurrentSubject()] || 84;
 }
 
 // ===================== EDIT MODE =====================
@@ -966,9 +1008,9 @@ function renderConversionTable(highlightScore) {
     });
 }
 
-function getAPScore(score) {
+function getAPScore(score, subject) {
     if (score === null || score === undefined || isNaN(score)) return null;
-    const chart = getConversionChart();
+    const chart = getConversionChart(subject);
     for (const row of chart) {
         if (score >= row.min && score <= row.max) return row.apScore;
     }
@@ -980,57 +1022,36 @@ function getAPScore(score) {
 function renderTable() {
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
-    const bl = getBottomLine();
-    tests.forEach(t => { t.bottomLine = bl; });
-
-    // Header row (vertical layout: each test is a row)
-    thead.innerHTML = `<tr>
-        <th>#</th>
-        <th class="col-name">Test Name</th>
-        <th>5-Mark Line</th>
-        <th>Score (/100)</th>
-        <th>AP Score</th>
-        <th></th>
-    </tr>`;
-
-    // One row per test
-    let rowsHTML = '';
-    tests.forEach((t, i) => {
-        const val = t.score !== null ? t.score : '';
-        const ap = t.score !== null ? getAPScore(t.score) : null;
-        const apBadge = ap !== null
-            ? `<span class="score-badge badge-${ap}">${ap}</span>`
-            : '<span style="color:#ccc;">--</span>';
-        const scoreClass = t.score !== null
-            ? (t.score >= bl ? 'score-above' : 'score-below')
-            : '';
-        const scoreDisabled = editMode ? '' : 'readonly';
-        const testId = t.id ? t.id : i;
-        rowsHTML += `<tr>
-            <td class="td-num">${i + 1}</td>
-            <td class="td-name" title="${(t.name || '').replace(/"/g, '&quot;')}">${(t.name || '').replace(/</g, '&lt;')}</td>
-            <td class="td-bl">${t.bottomLine}</td>
-            <td class="td-score"><input type="number" min="0" max="100" step="0.1" value="${val}" placeholder="--" class="${scoreClass}" data-index="${i}" data-test-id="${testId}" onchange="onScoreChange(this)" oninput="onScoreChange(this)" ${scoreDisabled}></td>
-            <td class="td-ap">${apBadge}</td>
-            <td class="td-action">${editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : ''}</td>
-        </tr>`;
+    const visible = getVisibleTests();
+    tests.forEach(function(t) {
+        var subj = t.subject || 'AP CSA';
+        t.bottomLine = getBottomLine(subj);
     });
 
-    // Summary row
-    const avg = getAverage();
-    const apScore = getAPScore(avg);
-    const apBadgeSummary = apScore !== null
-        ? `<span class="score-badge badge-${apScore}">${apScore}</span>`
-        : '--';
-    rowsHTML += `<tr class="summary-row">
-        <td></td>
-        <td style="text-align:left;padding-left:14px;">Average / Estimated</td>
-        <td>${bl}</td>
-        <td>${avg !== null ? avg.toFixed(1) : '--'}</td>
-        <td>${apBadgeSummary}</td>
-        <td></td>
-    </tr>`;
+    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Subject</th><th>5-Mark Line</th><th>Score (/100)</th><th>AP Score</th><th></th></tr>';
 
+    var rowNum = 0;
+    var rowsHTML = '';
+    tests.forEach(function(t, i) {
+        if (!getVisibleSubjects().includes(t.subject || 'AP CSA')) return;
+        rowNum++;
+        var bl = t.bottomLine;
+        var val = t.score !== null ? t.score : '';
+        var ap = t.score !== null ? getAPScore(t.score, t.subject) : null;
+        var apBadge = ap !== null ? '<span class="score-badge badge-' + ap + '">' + ap + '</span>' : '<span style="color:#ccc;">--</span>';
+        var scoreClass = t.score !== null ? (t.score >= bl ? 'score-above' : 'score-below') : '';
+        var scoreDisabled = editMode ? '' : 'readonly';
+        var testId = t.id || i;
+        rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name" title="' + (t.name || '').replace(/"/g, '&quot;') + '">' + (t.name || '').replace(/</g, '&lt;') + '</td><td class="td-subject">' + (t.subject || 'AP CSA') + '</td><td class="td-bl">' + bl + '</td><td class="td-score"><input type="number" min="0" max="100" step="0.1" value="' + val + '" placeholder="--" class="' + scoreClass + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onScoreChange(this)" oninput="onScoreChange(this)" ' + scoreDisabled + '></td><td class="td-ap">' + apBadge + '</td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
+    });
+
+    var visTests = getVisibleTests();
+    var avg = visTests.length ? visTests.reduce(function(a, t) { return a + (t.score != null && !isNaN(t.score) ? t.score : 0); }, 0) / Math.max(1, visTests.filter(function(t) { return t.score != null && !isNaN(t.score); }).length) : null;
+    if (visTests.filter(function(t) { return t.score != null && !isNaN(t.score); }).length === 0) avg = null;
+    var firstSubj = visTests[0] && (visTests[0].subject || 'AP CSA');
+    var apScore = avg !== null ? getAPScore(avg, firstSubj) : null;
+    var apBadgeSummary = apScore !== null ? '<span class="score-badge badge-' + apScore + '">' + apScore + '</span>' : '--';
+    rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>—</td><td>' + (avg !== null ? avg.toFixed(1) : '--') + '</td><td>' + apBadgeSummary + '</td><td></td></tr>';
     tbody.innerHTML = rowsHTML;
 }
 
@@ -1527,7 +1548,7 @@ async function initViewerLinkView(token) {
         return;
     }
     viewerLinkData = data;
-    students = data.students.map(s => ({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: (s.tests || []).map(t => ({ id: t.id, name: t.name, score: t.score, bottomLine: t.bottomLine || 84 })) }));
+    students = data.students.map(s => ({ id: s.id, name: s.name, grade: s.grade, subject: s.subject, tests: (s.tests || []).map(t => ({ id: t.id, name: t.name, subject: t.subject, score: t.score, bottomLine: t.bottomLine || 84 })) }));
     currentStudentIndex = 0;
     loadStudent(0);
     sharedMode = true;
@@ -1546,6 +1567,11 @@ async function initViewerLinkView(token) {
     document.getElementById('sharedBanner').style.display = 'block';
     document.getElementById('sharedStudentName').textContent = data.name || 'View only';
     document.getElementById('sharedSubject').textContent = '';
+    var noScoreHint = document.getElementById('viewerNoScoreHint');
+    if (noScoreHint) {
+        noScoreHint.style.display = data.allowViewScores === false ? 'block' : 'none';
+        noScoreHint.textContent = '您无权限查看成绩，仅可查看学生与考试名称。';
+    }
     document.getElementById('sharedFooterToolbar').style.display = 'flex';
     renderStudentSelect();
     updateAll();
@@ -1616,20 +1642,23 @@ async function openViewerLinksModal() {
         const url = location.origin + '/view/link/' + v.token;
         const safeName = (v.name || '').replace(/</g, '&lt;').replace(/'/g, "\\'");
         const studentIds = v.studentIds || [];
+        const allowScores = v.allowViewScores !== false;
         const editCheckboxes = allStudents.map(s => {
             const checked = studentIds.indexOf(s.id) !== -1 ? ' checked' : '';
             const sn = (s.name || '').replace(/</g, '&lt;');
             return '<label style="display:block;padding:2px 0;"><input type="checkbox" class="viewer-link-edit-cb" data-link-id="' + v.id + '" data-student-id="' + s.id + '"' + checked + ' /> ' + sn + '</label>';
         }).join('');
+        const scoreLabel = allowScores ? '<span style="color:#16a34a;font-size:12px;">可查看成绩</span>' : '<span style="color:#94a3b8;font-size:12px;">不可查看成绩</span>';
         return '<div class="viewer-link-item" data-link-id="' + v.id + '" style="margin-bottom:12px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">' +
             '<div class="viewer-link-header">' +
-            '<strong>' + safeName + '</strong> ' +
+            '<strong>' + safeName + '</strong> ' + scoreLabel + ' ' +
             '<button type="button" onclick="copyViewerUrl(\'' + url.replace(/'/g, "\\'") + '\')">Copy link</button> ' +
             '<button type="button" onclick="toggleEditViewerLink(\'' + v.id + '\')">Edit</button> ' +
             '<button type="button" onclick="deleteViewerLink(\'' + v.id + '\')">Delete</button>' +
             '</div>' +
             '<div class="viewer-link-edit-box" id="editBox_' + v.id + '" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">' +
             '<input type="text" id="editName_' + v.id + '" value="' + safeName + '" placeholder="Link name" style="width:100%;max-width:240px;padding:6px;margin-bottom:8px;box-sizing:border-box;" />' +
+            '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="editAllowScores_' + v.id + '"' + (allowScores ? ' checked' : '') + ' /> 允许该老师查看成绩</label>' +
             '<div style="font-size:12px;margin-bottom:4px;">Select students:</div>' +
             '<div style="max-height:140px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:6px;background:#fff;margin-bottom:8px;">' + editCheckboxes + '</div>' +
             '<button type="button" onclick="saveEditViewerLink(\'' + v.id + '\')" style="padding:4px 12px;margin-right:6px;">Save</button>' +
@@ -1655,7 +1684,8 @@ async function createViewerLink() {
         showToast('Select at least one student.', 'error');
         return;
     }
-    const data = await api('POST', '/api/viewer-links', { name, studentIds });
+    const allowViewScores = document.getElementById('newViewerLinkAllowScores') ? document.getElementById('newViewerLinkAllowScores').checked : true;
+    const data = await api('POST', '/api/viewer-links', { name, studentIds, allowViewScores });
     if (data && data.url) {
         if (navigator.clipboard) navigator.clipboard.writeText(data.url);
         showToast('Link created and copied.', 'success');
@@ -1675,7 +1705,9 @@ async function saveEditViewerLink(linkId) {
         showToast('Select at least one student.', 'error');
         return;
     }
-    const data = await api('PUT', '/api/viewer-links/' + linkId, { name, studentIds });
+    const allowEl = document.getElementById('editAllowScores_' + linkId);
+    const allowViewScores = allowEl ? allowEl.checked : true;
+    const data = await api('PUT', '/api/viewer-links/' + linkId, { name, studentIds, allowViewScores });
     if (data && !data.error) {
         showToast('Link updated.', 'success');
         toggleEditViewerLink(linkId);

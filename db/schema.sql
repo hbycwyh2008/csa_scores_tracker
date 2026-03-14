@@ -32,19 +32,21 @@ CREATE TABLE IF NOT EXISTS tests (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id  UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
+  subject     TEXT NOT NULL DEFAULT 'AP CSA',
   score       NUMERIC(5,2),
   bottom_line INTEGER DEFAULT 84,
   position    INTEGER NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Viewer links: 行政/申请老师 — token grants read-only access to a set of students
+-- Viewer links: 行政/申请老师 — token grants access to a set of students; allow_view_scores 控制是否可查看成绩
 CREATE TABLE IF NOT EXISTS viewer_links (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  token       TEXT UNIQUE NOT NULL,
-  name        TEXT NOT NULL,
-  created_by  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  token             TEXT UNIQUE NOT NULL,
+  name              TEXT NOT NULL,
+  allow_view_scores  BOOLEAN NOT NULL DEFAULT true,
+  created_by        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS viewer_link_students (

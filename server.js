@@ -10,7 +10,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { query } = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
 const BASE_URL = (process.env.BASE_URL || '').replace(/\/$/, '') || `http://localhost:${PORT}`;
 const TEACHER_EMAIL = (process.env.TEACHER_EMAIL || '').toLowerCase();
@@ -264,7 +264,7 @@ app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
   const students = await Promise.all(
     rows.map(async (s) => {
       const tests = await query(
-        `SELECT id, name, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position, created_at`,
+        `SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position, created_at`,
         [s.id]
       );
       return {
@@ -277,6 +277,7 @@ app.get('/api/students', requireAuth, requireTeacher, async (req, res) => {
         tests: tests.rows.map((t) => ({
           id: t.id,
           name: t.name,
+          subject: t.subject || 'AP CSA',
           score: t.score != null ? Number(t.score) : null,
           bottomLine: t.bottom_line,
           position: t.position,
@@ -319,17 +320,17 @@ app.put('/api/students/:id', requireAuth, requireTeacher, async (req, res) => {
     const { rows } = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     const s = rows[0];
-    const tests = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [s.id]);
-    return res.json({ ...s, tests: tests.rows.map((t) => ({ id: t.id, name: t.name, score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })) });
+    const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [s.id]);
+    return res.json({ ...s, tests: tests.rows.map((t) => ({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })) });
   }
   params.push(req.params.id);
   await query(`UPDATE students SET ${updates.join(', ')} WHERE id = $${n}`, params);
   const { rows } = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
-  const tests = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [req.params.id]);
+  const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [req.params.id]);
   res.json({
     ...rows[0],
-    tests: tests.rows.map((t) => ({ id: t.id, name: t.name, score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })),
+    tests: tests.rows.map((t) => ({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })),
   });
 });
 
@@ -355,25 +356,31 @@ app.post('/api/students/:id/invite', requireAuth, requireTeacher, async (req, re
 });
 
 app.post('/api/students/:id/tests', requireAuth, requireTeacher, async (req, res) => {
-  const { name, bottomLine } = req.body || {};
+  const { name, subject, bottomLine } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Test name required' });
+  const subj = (subject && (subject === 'AP CSA' || subject === 'AP CSP')) ? subject : 'AP CSA';
+  const bl = bottomLine ?? (subj === 'AP CSP' ? 90 : 84);
   const maxPos = await query(`SELECT COALESCE(MAX(position), 0) + 1 AS pos FROM tests WHERE student_id = $1`, [req.params.id]);
   const pos = maxPos.rows[0].pos;
   const { rows } = await query(
-    `INSERT INTO tests (student_id, name, bottom_line, position) VALUES ($1, $2, $3, $4) RETURNING id, name, score, bottom_line, position`,
-    [req.params.id, name.trim(), bottomLine ?? 84, pos]
+    `INSERT INTO tests (student_id, name, subject, bottom_line, position) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, subject, score, bottom_line, position`,
+    [req.params.id, name.trim(), subj, bl, pos]
   );
-  res.status(201).json(rows[0]);
+  res.status(201).json({ id: rows[0].id, name: rows[0].name, subject: rows[0].subject, score: rows[0].score, bottomLine: rows[0].bottom_line, position: rows[0].position });
 });
 
 app.put('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (req, res) => {
-  const { name, score, bottomLine } = req.body || {};
+  const { name, subject, score, bottomLine } = req.body || {};
   const updates = [];
   const params = [];
   let n = 1;
   if (name !== undefined) {
     updates.push(`name = $${n++}`);
     params.push(name.trim());
+  }
+  if (subject !== undefined && (subject === 'AP CSA' || subject === 'AP CSP')) {
+    updates.push(`subject = $${n++}`);
+    params.push(subject);
   }
   if (score !== undefined) {
     updates.push(`score = $${n++}`);
@@ -384,15 +391,17 @@ app.put('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (r
     params.push(bottomLine);
   }
   if (updates.length === 0) {
-    const { rows } = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
+    const { rows } = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Test not found' });
-    return res.json(rows[0]);
+    const t = rows[0];
+    return res.json({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position });
   }
   params.push(req.params.testId, req.params.id);
   await query(`UPDATE tests SET ${updates.join(', ')} WHERE id = $${n} AND student_id = $${n + 1}`, params);
-  const { rows } = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
+  const { rows } = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE id = $1 AND student_id = $2`, [req.params.testId, req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Test not found' });
-  res.json(rows[0]);
+  const t = rows[0];
+  res.json({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position });
 });
 
 app.delete('/api/students/:id/tests/:testId', requireAuth, requireTeacher, async (req, res) => {
@@ -413,7 +422,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
   const s = rows[0];
-  const tests = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position, created_at`, [s.id]);
+  const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position, created_at`, [s.id]);
   res.json({
     id: s.id,
     name: s.name,
@@ -422,6 +431,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
     tests: tests.rows.map((t) => ({
       id: t.id,
       name: t.name,
+      subject: t.subject || 'AP CSA',
       score: t.score != null ? Number(t.score) : null,
       bottomLine: t.bottom_line,
       position: t.position,
@@ -445,40 +455,44 @@ app.get('/api/users', requireAuth, requireTeacher, async (req, res) => {
 
 app.get('/api/viewer-links', requireAuth, requireTeacher, async (req, res) => {
   const { rows } = await query(
-    `SELECT id, token, name, created_at FROM viewer_links WHERE created_by = $1 ORDER BY created_at DESC`,
+    `SELECT id, token, name, allow_view_scores, created_at FROM viewer_links WHERE created_by = $1 ORDER BY created_at DESC`,
     [req.user.id]
   );
   const withStudents = await Promise.all(
     rows.map(async (v) => {
       const st = await query(`SELECT student_id FROM viewer_link_students WHERE viewer_link_id = $1`, [v.id]);
-      return { id: v.id, token: v.token, name: v.name, studentIds: st.rows.map((r) => r.student_id), createdAt: v.created_at };
+      return { id: v.id, token: v.token, name: v.name, allowViewScores: v.allow_view_scores !== false, studentIds: st.rows.map((r) => r.student_id), createdAt: v.created_at };
     })
   );
   res.json(withStudents);
 });
 
 app.post('/api/viewer-links', requireAuth, requireTeacher, async (req, res) => {
-  const { name, studentIds } = req.body || {};
+  const { name, studentIds, allowViewScores } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
   const token = genToken();
+  const allowScores = allowViewScores !== false;
   const { rows } = await query(
-    `INSERT INTO viewer_links (token, name, created_by) VALUES ($1, $2, $3) RETURNING id, token, name`,
-    [token, name.trim(), req.user.id]
+    `INSERT INTO viewer_links (token, name, allow_view_scores, created_by) VALUES ($1, $2, $3, $4) RETURNING id, token, name, allow_view_scores`,
+    [token, name.trim(), allowScores, req.user.id]
   );
   const v = rows[0];
   const ids = Array.isArray(studentIds) ? studentIds : [];
   for (const sid of ids) {
     await query(`INSERT INTO viewer_link_students (viewer_link_id, student_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [v.id, sid]);
   }
-  res.status(201).json({ id: v.id, token: v.token, name: v.name, url: `${BASE_URL}/view/link/${v.token}` });
+  res.status(201).json({ id: v.id, token: v.token, name: v.name, allowViewScores: v.allow_view_scores !== false, url: `${BASE_URL}/view/link/${v.token}` });
 });
 
 app.put('/api/viewer-links/:id', requireAuth, requireTeacher, async (req, res) => {
-  const { name, studentIds } = req.body || {};
+  const { name, studentIds, allowViewScores } = req.body || {};
   const { rows } = await query(`SELECT id FROM viewer_links WHERE id = $1 AND created_by = $2`, [req.params.id, req.user.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Viewer link not found' });
   if (name !== undefined && name.trim()) {
     await query(`UPDATE viewer_links SET name = $1 WHERE id = $2`, [name.trim(), req.params.id]);
+  }
+  if (allowViewScores !== undefined) {
+    await query(`UPDATE viewer_links SET allow_view_scores = $1 WHERE id = $2`, [allowViewScores === true, req.params.id]);
   }
   if (Array.isArray(studentIds)) {
     await query(`DELETE FROM viewer_link_students WHERE viewer_link_id = $1`, [req.params.id]);
@@ -486,9 +500,9 @@ app.put('/api/viewer-links/:id', requireAuth, requireTeacher, async (req, res) =
       await query(`INSERT INTO viewer_link_students (viewer_link_id, student_id) VALUES ($1, $2)`, [req.params.id, sid]);
     }
   }
-  const v = await query(`SELECT id, token, name FROM viewer_links WHERE id = $1`, [req.params.id]);
+  const v = await query(`SELECT id, token, name, allow_view_scores FROM viewer_links WHERE id = $1`, [req.params.id]);
   const st = await query(`SELECT student_id FROM viewer_link_students WHERE viewer_link_id = $1`, [req.params.id]);
-  res.json({ ...v.rows[0], studentIds: st.rows.map((r) => r.student_id), url: `${BASE_URL}/view/link/${v.rows[0].token}` });
+  res.json({ ...v.rows[0], allowViewScores: v.rows[0].allow_view_scores !== false, studentIds: st.rows.map((r) => r.student_id), url: `${BASE_URL}/view/link/${v.rows[0].token}` });
 });
 
 app.delete('/api/viewer-links/:id', requireAuth, requireTeacher, async (req, res) => {
@@ -499,28 +513,36 @@ app.delete('/api/viewer-links/:id', requireAuth, requireTeacher, async (req, res
 
 app.get('/api/view/link/:token', async (req, res) => {
   const { rows: link } = await query(
-    `SELECT id, name FROM viewer_links WHERE token = $1`,
+    `SELECT id, name, allow_view_scores FROM viewer_links WHERE token = $1`,
     [req.params.token]
   );
   if (link.length === 0) return res.status(404).json({ error: 'Invalid or expired link' });
+  const allowViewScores = link[0].allow_view_scores !== false;
   const studentIds = await query(`SELECT student_id FROM viewer_link_students WHERE viewer_link_id = $1`, [link[0].id]);
   if (studentIds.rows.length === 0) {
-    return res.json({ name: link[0].name, students: [] });
+    return res.json({ name: link[0].name, allowViewScores: true, students: [] });
   }
   const students = [];
   for (const { student_id } of studentIds.rows) {
     const s = await query(`SELECT id, name, grade, subject FROM students WHERE id = $1`, [student_id]);
     if (s.rows.length === 0) continue;
-    const t = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [student_id]);
+    const t = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [student_id]);
     students.push({
       id: s.rows[0].id,
       name: s.rows[0].name,
       grade: s.rows[0].grade,
       subject: s.rows[0].subject,
-      tests: t.rows.map((x) => ({ id: x.id, name: x.name, score: x.score != null ? Number(x.score) : null, bottomLine: x.bottom_line, position: x.position })),
+      tests: t.rows.map((x) => ({
+        id: x.id,
+        name: x.name,
+        subject: x.subject || 'AP CSA',
+        score: allowViewScores ? (x.score != null ? Number(x.score) : null) : null,
+        bottomLine: x.bottom_line,
+        position: x.position,
+      })),
     });
   }
-  res.json({ name: link[0].name, students });
+  res.json({ name: link[0].name, allowViewScores, students });
 });
 
 app.post('/api/students/:id/share', requireAuth, requireTeacher, async (req, res) => {
@@ -568,13 +590,13 @@ app.get('/api/share/:token', async (req, res) => {
   if (r.expires_at && new Date(r.expires_at) < new Date()) {
     return res.status(410).json({ error: 'Link expired' });
   }
-  const tests = await query(`SELECT id, name, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [r.id]);
+  const tests = await query(`SELECT id, name, subject, score, bottom_line, position FROM tests WHERE student_id = $1 ORDER BY position`, [r.id]);
   res.json({
     id: r.id,
     name: r.name,
     grade: r.grade,
     subject: r.subject,
-    tests: tests.rows.map((t) => ({ id: t.id, name: t.name, score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })),
+    tests: tests.rows.map((t) => ({ id: t.id, name: t.name, subject: t.subject || 'AP CSA', score: t.score != null ? Number(t.score) : null, bottomLine: t.bottom_line, position: t.position })),
   });
 });
 
@@ -596,6 +618,7 @@ async function start() {
   }
   await bootstrapTeacher();
   app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Listening on 0.0.0.0:${PORT}`);
     console.log(`AP Score Tracker → ${BASE_URL}`);
   });
 }
