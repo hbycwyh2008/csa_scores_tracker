@@ -4,30 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2025-2026 AP CSA Mock Results Analysis Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         /* Shadcn-style theme (keep existing structure) */
         :root {
             --background: 0 0% 100%;
-            --foreground: 222.2 84% 4.9%;
+            --foreground: 222 47% 11%;
             --card: 0 0% 100%;
-            --card-foreground: 222.2 84% 4.9%;
-            --primary: 221.2 83.2% 53.3%;
-            --primary-foreground: 210 40% 98%;
-            --secondary: 210 40% 96.1%;
-            --secondary-foreground: 222.2 47.4% 11.2%;
-            --muted: 210 40% 96.1%;
-            --muted-foreground: 215.4 16.3% 46.9%;
-            --accent: 210 40% 96.1%;
-            --accent-foreground: 222.2 47.4% 11.2%;
-            --destructive: 0 84.2% 60.2%;
-            --destructive-foreground: 210 40% 98%;
-            --border: 214.3 31.8% 91.4%;
-            --input: 214.3 31.8% 91.4%;
-            --ring: 221.2 83.2% 53.3%;
+            --card-foreground: 222 47% 11%;
+            --primary: 239 84% 57%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 220 14% 96%;
+            --secondary-foreground: 222 47% 11%;
+            --muted: 220 14% 96%;
+            --muted-foreground: 220 9% 46%;
+            --accent: 220 14% 96%;
+            --accent-foreground: 222 47% 11%;
+            --destructive: 0 84% 60%;
+            --destructive-foreground: 0 0% 100%;
+            --border: 220 13% 91%;
+            --input: 220 13% 91%;
+            --ring: 239 84% 57%;
             --radius: 0.5rem;
             --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
         }
         .btn {
             display: inline-flex; align-items: center; justify-content: center;
@@ -94,36 +98,37 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
-            background: hsl(220 15% 96%);
+            font-family: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(160deg, hsl(224 30% 97%) 0%, hsl(220 20% 94%) 100%);
             color: hsl(var(--foreground));
-            padding: 1.5rem;
+            padding: 1.75rem;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
         .container {
             max-width: 1500px;
             margin: 0 auto;
             background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
-            border-radius: var(--radius-lg);
-            box-shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.06), 0 10px 20px -5px hsl(0 0% 0% / 0.08);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 1px 3px hsl(0 0% 0% / 0.04), 0 20px 40px -12px hsl(0 0% 0% / 0.12);
             overflow: hidden;
         }
         .report-header {
-            background: hsl(var(--primary));
+            background: linear-gradient(135deg, hsl(239 84% 52%) 0%, hsl(239 84% 57%) 50%, hsl(243 75% 59%) 100%);
             color: hsl(var(--primary-foreground));
             text-align: center;
-            padding: 1.5rem 1.5rem;
-            font-size: 1.35rem;
+            padding: 1.75rem 1.5rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            letter-spacing: 0.02em;
+            letter-spacing: -0.02em;
         }
         .report-header .subtitle {
-            font-size: 0.8125rem;
-            font-weight: 400;
-            margin-top: 0.25rem;
-            opacity: 0.9;
-            letter-spacing: 0.02em;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-top: 0.35rem;
+            opacity: 0.92;
+            letter-spacing: 0.01em;
         }
 
         /* Student Info */
@@ -251,7 +256,6 @@
             text-align: left;
             padding-left: 1rem;
             color: hsl(var(--foreground));
-            background: hsl(var(--muted) / 0.4);
             max-width: 220px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -261,7 +265,6 @@
         table.score-table td.td-num {
             color: hsl(var(--muted-foreground));
             font-size: 0.75rem;
-            background: hsl(var(--muted) / 0.4);
         }
         table.score-table td.td-bl {
             background: #fffbeb;
@@ -355,7 +358,8 @@
         .mcq-frq-pass { color: #16a34a; font-weight: 600; }
         .mcq-frq-fail { color: #dc2626; font-weight: 600; }
         table.score-table td.td-mcq, table.score-table td.td-frq { white-space: nowrap; }
-        table.score-table tbody tr:not(.summary-row):hover td { background: hsl(var(--muted) / 0.5); }
+        table.score-table tbody tr:not(.summary-row):nth-child(even) td:not(.td-bl):not(.td-score):not(.td-ap) { background: hsl(var(--muted) / 0.4); }
+        table.score-table tbody tr:not(.summary-row):hover td { background: hsl(var(--primary) / 0.08) !important; }
         @media (max-width: 768px) {
             table.score-table { font-size: 14px; }
             table.score-table th, table.score-table td { padding: 10px 8px; }
@@ -411,9 +415,9 @@
             color: hsl(var(--foreground));
         }
         .subject-pill.active {
-            background: hsl(var(--card));
-            color: hsl(var(--primary));
-            box-shadow: 0 1px 2px hsl(0 0% 0% / 0.06);
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            box-shadow: 0 2px 4px hsl(var(--primary) / 0.3);
         }
 
         /* Charts Section — Shadcn cards */
@@ -432,15 +436,16 @@
             background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
             border-radius: var(--radius-lg);
-            padding: 1.25rem;
+            padding: 1.35rem;
             box-shadow: 0 1px 3px hsl(0 0% 0% / 0.05);
+            border-top: 3px solid hsl(var(--primary) / 0.5);
         }
         .chart-card h3 {
             text-align: center;
-            font-size: 0.875rem;
-            margin-bottom: 0.75rem;
-            color: hsl(var(--muted-foreground));
-            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.85rem;
+            color: hsl(var(--foreground));
+            font-weight: 700;
         }
 
         /* Conversion Chart */
@@ -448,18 +453,21 @@
             background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
             border-radius: var(--radius-lg);
-            padding: 1.25rem;
+            padding: 1.35rem;
             box-shadow: 0 1px 3px hsl(0 0% 0% / 0.05);
             display: flex;
             flex-direction: column;
+            border-top: 3px solid hsl(var(--primary) / 0.5);
         }
         .conversion-card .conv-subtitle {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: hsl(var(--muted-foreground));
-            margin-bottom: 0.125rem;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         .conversion-card h2 {
-            font-size: 1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             margin-bottom: 1rem;
             color: hsl(var(--foreground));
@@ -529,24 +537,39 @@
         .estimated-banner .est-block {
             background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
-            border-radius: var(--radius);
-            padding: 1rem 1.25rem;
+            border-radius: var(--radius-lg);
+            padding: 1.1rem 1.25rem 1.1rem 1.5rem;
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
-            box-shadow: 0 1px 2px hsl(0 0% 0% / 0.04);
+            gap: 0.35rem;
+            box-shadow: 0 1px 3px hsl(0 0% 0% / 0.05);
+            position: relative;
+            overflow: hidden;
         }
-        .est-block.est-mcq-frq .est-value { font-size: 1.15rem; }
+        .estimated-banner .est-block::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, hsl(var(--primary)), hsl(239 84% 67%));
+            border-radius: 4px 0 0 4px;
+        }
+        .est-block.est-mcq-frq .est-value { font-size: 1.2rem; }
         .est-block .est-label {
             font-size: 0.75rem;
             color: hsl(var(--muted-foreground));
-            font-weight: 500;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
         .est-block .est-value {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.65rem;
+            font-weight: 800;
             color: hsl(var(--primary));
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
         }
         .est-block .est-value.score-5 { color: hsl(142 76% 36%); }
         .est-block .est-value.score-4 { color: hsl(var(--primary)); }
