@@ -727,6 +727,10 @@
             <button type="button" class="subject-pill" data-value="AP CSP" onclick="setSubjectFilter('AP CSP')">AP CSP</button>
         </div>
     </div>
+    <!-- Pass rules explanation (English) -->
+    <div class="pass-rules-note" style="margin-bottom:10px;padding:8px 12px;background:#f0f9ff;border-left:4px solid #0ea5e9;font-size:13px;color:#0c4a6e;border-radius:4px;">
+        <strong>Pass rules:</strong> <span id="passRulesText">MCQ (Pass): score &gt; (42−5)×1.3095 (≈48.45). FRQ (Pass): score &gt; 12.5×1.8 (22.5). ✓ = pass, ✗ = fail.</span>
+    </div>
     <!-- Score Table -->
     <div class="table-container" id="tableContainer">
         <table class="score-table" id="scoreTable">
@@ -1250,7 +1254,7 @@ function renderTable() {
         t.bottomLine = getBottomLine(subj);
     });
 
-    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Exam Date</th><th>Score (/100)</th><th>AP Score</th><th>MCQ (Pass)</th><th>FRQ (Pass)</th><th></th></tr>';
+    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Exam Date</th><th>Score (/100)</th><th>AP Score</th><th title="Pass: score &gt; (42−5)×1.3095 (≈48.45)">MCQ (Pass)</th><th title="Pass: score &gt; 12.5×1.8 (22.5)">FRQ (Pass)</th><th></th></tr>';
 
     var rowNum = 0;
     var rowsHTML = '';
