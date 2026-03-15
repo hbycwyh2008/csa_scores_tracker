@@ -275,6 +275,18 @@
             table.score-table td.td-score span, table.score-table td.td-mcq .mcq-frq-status,
             table.score-table td.td-frq .mcq-frq-status { font-size: 14px; font-weight: 700; }
         }
+        /* Mobile: card layout so all scores visible without horizontal scroll */
+        .score-cards-wrap { display: flex; flex-direction: column; gap: 12px; padding: 0 4px 16px; }
+        .score-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+        .score-card-name { font-weight: 700; font-size: 15px; color: #1e293b; margin-bottom: 8px; }
+        .score-card-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 14px; }
+        .score-card-row .label { color: #64748b; }
+        .score-card-row .value { font-weight: 600; color: #0f172a; }
+        .score-card-row .value.score-above { color: #16a34a; }
+        .score-card-row .value.score-below { color: #dc2626; }
+        .score-card-row .value.mcq-frq-pass { color: #16a34a; }
+        .score-card-row .value.mcq-frq-fail { color: #dc2626; }
+        .score-cards-wrap .summary-card { background: #eff6ff; border: 2px solid #2563eb; font-weight: 700; }
 
         /* Subject filter pills */
         .subject-filter {
@@ -748,13 +760,16 @@
     <div class="pass-rules-note" style="margin-bottom:10px;padding:8px 12px;background:#f0f9ff;border-left:4px solid #0ea5e9;font-size:13px;color:#0c4a6e;border-radius:4px;">
         <strong>Pass rules (by subject):</strong> <span id="passRulesText">AP CSA: MCQ &gt; 48.45, FRQ &gt; 22.5. AP CSP: MCQ &gt; 65, FRQ &gt; 25. ✓ = pass, ✗ = fail.</span>
     </div>
-    <!-- Score Table -->
+    <!-- Score Table (desktop) + Score Cards (mobile) -->
     <p class="table-scroll-hint" id="tableScrollHint" style="display:none;font-size:12px;color:#64748b;margin:0 20px 6px 0;">↔ Swipe to see all scores</p>
     <div class="table-container" id="tableContainer">
-        <table class="score-table" id="scoreTable">
-            <thead id="tableHead"></thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+        <div id="scoreTableWrap">
+            <table class="score-table" id="scoreTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div id="scoreCardsWrap" class="score-cards-wrap" style="display:none;"></div>
     </div>
 
     <!-- Charts + Conversion -->
@@ -1264,6 +1279,9 @@ function getAPScore(score, subject) {
 function renderTable() {
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
+    const scoreTableWrap = document.getElementById('scoreTableWrap');
+    const scoreCardsWrap = document.getElementById('scoreCardsWrap');
+    var isMobile = window.innerWidth <= 768;
     const visible = getVisibleTests();
     tests.forEach(function(t) {
         var subj = t.subject || 'AP CSA';
@@ -1274,6 +1292,7 @@ function renderTable() {
 
     var rowNum = 0;
     var rowsHTML = '';
+    var cardsHTML = '';
     tests.forEach(function(t, i) {
         if (!getVisibleSubjects().includes(t.subject || 'AP CSA')) return;
         rowNum++;
@@ -1304,6 +1323,7 @@ function renderTable() {
         var examDateCell = editMode ? '<input type="text" class="exam-date-input" placeholder="YYYY-MM-DD" value="' + (examDateDisplay !== '—' ? examDateDisplay.replace(/"/g, '&quot;') : '') + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onExamDateChange(this)" onblur="onExamDateChange(this)" style="width:100%;min-width:100px;padding:4px 6px;box-sizing:border-box;">' : examDateDisplay;
         var scoreDisplay = totalScore !== null ? String(totalScore) : '--';
         rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name">' + nameCell + '</td><td class="td-exam-date">' + examDateCell + '</td><td class="td-score"><span class="' + scoreClass + '" title="MCQ + FRQ rounded">' + scoreDisplay + '</span></td><td class="td-ap">' + apBadge + '</td><td class="td-mcq">' + mcqInput + ' <span class="mcq-frq-status' + mcqStatusClass + '">' + mcqBadge + '</span></td><td class="td-frq">' + frqInput + ' <span class="mcq-frq-status' + frqStatusClass + '">' + frqBadge + '</span></td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
+        cardsHTML += '<div class="score-card"><div class="score-card-name">' + (t.name || '').replace(/</g, '&lt;') + '</div><div class="score-card-row"><span class="label">Exam Date</span><span class="value">' + (examDateDisplay !== '—' ? examDateDisplay : '—') + '</span></div><div class="score-card-row"><span class="label">Score (/100)</span><span class="value ' + scoreClass + '">' + scoreDisplay + '</span></div><div class="score-card-row"><span class="label">AP Score</span><span class="value">' + (ap !== null ? ap : '--') + '</span></div><div class="score-card-row"><span class="label">MCQ (Pass)</span><span class="value ' + mcqStatusClass + '">' + mcqDisplay + ' ' + mcqBadge + '</span></div><div class="score-card-row"><span class="label">FRQ (Pass)</span><span class="value ' + frqStatusClass + '">' + frqDisplay + ' ' + frqBadge + '</span></div></div>';
     });
 
     var visTests = getVisibleTests();
@@ -1319,8 +1339,14 @@ function renderTable() {
     var avgDisplay = avg !== null ? (avg % 1 === 0 ? String(Math.round(avg)) : avg.toFixed(1)) : '--';
     rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>' + avgDisplay + '</td><td>' + apBadgeSummary + '</td><td colspan="2">' + mcqSummary + ' &nbsp; ' + frqSummary + '</td><td></td></tr>';
     tbody.innerHTML = rowsHTML;
+    var summaryCard = '<div class="score-card summary-card"><div class="score-card-name">Average / Estimated</div><div class="score-card-row"><span class="label">Score (/100)</span><span class="value">' + avgDisplay + '</span></div><div class="score-card-row"><span class="label">AP Score</span><span class="value">' + (apScore !== null ? apScore : '--') + '</span></div><div class="score-card-row"><span class="label">MCQ / FRQ pass</span><span class="value">' + mcqSummary + ' &nbsp; ' + frqSummary + '</span></div></div>';
+    if (scoreCardsWrap) {
+        scoreCardsWrap.innerHTML = cardsHTML + summaryCard;
+        scoreCardsWrap.style.display = isMobile ? 'block' : 'none';
+    }
+    if (scoreTableWrap) scoreTableWrap.style.display = isMobile ? 'none' : 'block';
     var hint = document.getElementById('tableScrollHint');
-    if (hint) hint.style.display = window.innerWidth <= 768 ? 'block' : 'none';
+    if (hint) hint.style.display = isMobile ? 'none' : (window.innerWidth <= 768 ? 'block' : 'none');
 }
 
 async function deleteTestByIndex(index) {
@@ -2288,10 +2314,16 @@ async function shareLinkForStudent() {
     checkExistingAuth().then(ok => {
         if (!ok) document.getElementById('loginOverlay').classList.remove('hidden');
     });
-    window.addEventListener('resize', function() {
-        var h = document.getElementById('tableScrollHint');
-        if (h) h.style.display = window.innerWidth <= 768 ? 'block' : 'none';
-    });
+    (function() {
+        var lastMobile = window.innerWidth <= 768;
+        window.addEventListener('resize', function() {
+            var w = window.innerWidth;
+            var nowMobile = w <= 768;
+            var h = document.getElementById('tableScrollHint');
+            if (h) h.style.display = nowMobile ? 'block' : 'none';
+            if (nowMobile !== lastMobile && typeof renderTable === 'function') { lastMobile = nowMobile; renderTable(); }
+        });
+    })();
 })();
 </script>
 
