@@ -707,11 +707,11 @@
                 <span class="est-label">Trend</span>
                 <span class="est-value" id="estTrend">--</span>
             </div>
-            <div class="est-block est-mcq-frq" title="MCQ pass: score &gt; (42-5)×1.3095. FRQ pass: score &gt; 12.5×1.8.">
+            <div class="est-block est-mcq-frq" title="By subject: AP CSA MCQ&gt;48.45 FRQ&gt;22.5; AP CSP MCQ&gt;65 FRQ&gt;25">
                 <span class="est-label">MCQ (Pass)</span>
                 <span class="est-value" id="estMcq">--</span>
             </div>
-            <div class="est-block est-mcq-frq" title="FRQ pass: score &gt; 12.5×1.8">
+            <div class="est-block est-mcq-frq" title="By subject: AP CSA FRQ&gt;22.5; AP CSP FRQ&gt;25">
                 <span class="est-label">FRQ (Pass)</span>
                 <span class="est-value" id="estFrq">--</span>
             </div>
@@ -729,7 +729,7 @@
     </div>
     <!-- Pass rules explanation (English) -->
     <div class="pass-rules-note" style="margin-bottom:10px;padding:8px 12px;background:#f0f9ff;border-left:4px solid #0ea5e9;font-size:13px;color:#0c4a6e;border-radius:4px;">
-        <strong>Pass rules:</strong> <span id="passRulesText">MCQ (Pass): score &gt; (42−5)×1.3095 (≈48.45). FRQ (Pass): score &gt; 12.5×1.8 (22.5). ✓ = pass, ✗ = fail.</span>
+        <strong>Pass rules (by subject):</strong> <span id="passRulesText">AP CSA: MCQ &gt; 48.45, FRQ &gt; 22.5. AP CSP: MCQ &gt; 65, FRQ &gt; 25. ✓ = pass, ✗ = fail.</span>
     </div>
     <!-- Score Table -->
     <div class="table-container" id="tableContainer">
@@ -926,13 +926,11 @@ const conversionTitles = {
     'AP CSP': 'Computer Science Principles',
 };
 const fiveMarkBottomLines = { 'AP CSA': 84, 'AP CSP': 90 };
-/** MCQ pass: score > (42-5)*weight. */
-const MCQ_PASS_WEIGHT = 1.3095;
-const MCQ_PASS_THRESHOLD = (42 - 5) * MCQ_PASS_WEIGHT;  // 37 * 1.3095 ≈ 48.45
-/** FRQ pass: score > 12.5 * 1.8 = 22.5 */
-const FRQ_PASS_THRESHOLD = 12.5 * 1.8;  // 22.5
-function getMcqPassThreshold() { return MCQ_PASS_THRESHOLD; }
-function getFrqPassThreshold(subj) { return FRQ_PASS_THRESHOLD; }
+/** Pass thresholds by subject. AP CSA: (42-5)*1.3095 and 12.5*1.8. AP CSP: MCQ>65, FRQ>25. */
+const mcqPassBySubject = { 'AP CSA': (42 - 5) * 1.3095, 'AP CSP': 65 };
+const frqPassBySubject = { 'AP CSA': 12.5 * 1.8, 'AP CSP': 25 };
+function getMcqPassThreshold(subj) { return mcqPassBySubject[subj || 'AP CSA'] != null ? mcqPassBySubject[subj || 'AP CSA'] : mcqPassBySubject['AP CSA']; }
+function getFrqPassThreshold(subj) { return frqPassBySubject[subj || 'AP CSA'] != null ? frqPassBySubject[subj || 'AP CSA'] : frqPassBySubject['AP CSA']; }
 
 /** Total score = round(MCQ + FRQ); integer only. Used for display and AP conversion. */
 function getComputedTotalScore(t) {
@@ -1254,7 +1252,7 @@ function renderTable() {
         t.bottomLine = getBottomLine(subj);
     });
 
-    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Exam Date</th><th>Score (/100)</th><th>AP Score</th><th title="Pass: score &gt; (42−5)×1.3095 (≈48.45)">MCQ (Pass)</th><th title="Pass: score &gt; 12.5×1.8 (22.5)">FRQ (Pass)</th><th></th></tr>';
+    thead.innerHTML = '<tr><th>#</th><th class="col-name">Test Name</th><th>Exam Date</th><th>Score (/100)</th><th>AP Score</th><th title="By subject: AP CSA &gt;48.45, AP CSP &gt;65">MCQ (Pass)</th><th title="By subject: AP CSA &gt;22.5, AP CSP &gt;25">FRQ (Pass)</th><th></th></tr>';
 
     var rowNum = 0;
     var rowsHTML = '';
@@ -1269,7 +1267,8 @@ function renderTable() {
         var testId = t.id || i;
         var subj = t.subject || 'AP CSA';
         var mcqVal = t.mcqWrong != null && t.mcqWrong !== '' ? t.mcqWrong : '';
-        var mcqOk = t.mcqWrong != null && t.mcqWrong !== '' && !isNaN(Number(t.mcqWrong)) && Number(t.mcqWrong) > MCQ_PASS_THRESHOLD;
+        var mcqTh = getMcqPassThreshold(subj);
+        var mcqOk = t.mcqWrong != null && t.mcqWrong !== '' && !isNaN(Number(t.mcqWrong)) && Number(t.mcqWrong) > mcqTh;
         var mcqBadge = t.mcqWrong != null && t.mcqWrong !== '' && !isNaN(Number(t.mcqWrong)) ? (mcqOk ? '✓' : '✗') : '—';
         var mcqStatusClass = mcqBadge === '✓' ? ' mcq-frq-pass' : (mcqBadge === '✗' ? ' mcq-frq-fail' : '');
         var frqVal = t.frqScore != null && t.frqScore !== '' ? t.frqScore : '';
@@ -1295,7 +1294,7 @@ function renderTable() {
     var firstSubj = visTests[0] && (visTests[0].subject || 'AP CSA');
     var apScore = avg !== null ? getAPScore(avg, firstSubj) : null;
     var apBadgeSummary = apScore !== null ? '<span class="score-badge badge-' + apScore + '">' + apScore + '</span>' : '--';
-    var mcqPassCount = visTests.filter(function(t) { var v = t.mcqWrong; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) > MCQ_PASS_THRESHOLD; }).length;
+    var mcqPassCount = visTests.filter(function(t) { var v = t.mcqWrong, s = t.subject || 'AP CSA'; var th = getMcqPassThreshold(s); return v != null && v !== '' && !isNaN(Number(v)) && Number(v) > th; }).length;
     var frqPassCount = visTests.filter(function(t) { var v = t.frqScore, s = t.subject || 'AP CSA'; var half = getFrqPassThreshold(s); return v != null && v !== '' && !isNaN(Number(v)) && Number(v) > half; }).length;
     var mcqSummary = 'MCQ pass: ' + mcqPassCount + '/' + visTests.length;
     var frqSummary = 'FRQ pass: ' + frqPassCount + '/' + visTests.length;
@@ -1456,7 +1455,7 @@ function updateBanner() {
     const latest = getLatestScore();
     const trend = getTrend();
     const visTests = getVisibleTests();
-    const mcqPassCount = visTests.filter(function(t) { var v = t.mcqWrong; return v != null && v !== '' && !isNaN(Number(v)) && Number(v) > MCQ_PASS_THRESHOLD; }).length;
+    const mcqPassCount = visTests.filter(function(t) { var v = t.mcqWrong, s = t.subject || 'AP CSA'; var th = getMcqPassThreshold(s); return v != null && v !== '' && !isNaN(Number(v)) && Number(v) > th; }).length;
     const frqPassCount = visTests.filter(function(t) { var v = t.frqScore, s = t.subject || 'AP CSA'; var half = getFrqPassThreshold(s); return v != null && v !== '' && !isNaN(Number(v)) && Number(v) > half; }).length;
 
     const estAvg = document.getElementById('estAvg');
