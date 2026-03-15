@@ -7,11 +7,96 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
+        /* Shadcn-style theme (keep existing structure) */
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 221.2 83.2% 53.3%;
+            --radius: 0.5rem;
+            --radius-lg: 0.75rem;
+        }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            white-space: nowrap; border-radius: var(--radius);
+            font-size: 0.875rem; font-weight: 500;
+            height: 2.25rem; padding: 0 1rem;
+            cursor: pointer; transition: background 0.2s, color 0.2s;
+            border: 1px solid transparent;
+        }
+        .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: transparent; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-secondary { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+        .btn-secondary:hover { background: hsl(210 40% 92%); }
+        .btn-outline { background: transparent; border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+        .btn-outline:hover { background: hsl(var(--accent)); }
+        .btn-destructive { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
+        .btn-destructive:hover { filter: brightness(1.1); }
+        .btn-ghost { background: transparent; color: hsl(var(--foreground)); }
+        .btn-ghost:hover { background: hsl(var(--accent)); }
+        .btn-sm { height: 1.75rem; padding: 0 0.75rem; font-size: 0.8125rem; }
+        .input-shadcn {
+            width: 100%; height: 2.25rem; padding: 0 0.75rem;
+            border: 1px solid hsl(var(--input)); border-radius: var(--radius);
+            background: hsl(var(--background)); font-size: 0.875rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+        .input-shadcn:focus { outline: none; border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2); }
+        .input-shadcn::placeholder { color: hsl(var(--muted-foreground)); }
+        .label-shadcn { font-size: 0.875rem; font-weight: 500; color: hsl(var(--foreground)); margin-bottom: 0.375rem; display: block; }
+        .card-shadcn { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); box-shadow: 0 1px 3px hsl(var(--foreground) / 0.05); }
+        .card-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid hsl(var(--border)); }
+        .card-content { padding: 1.5rem; }
+        .card-footer { padding: 0.75rem 1.5rem; border-top: 1px solid hsl(var(--border)); text-align: right; }
+        .badge { display: inline-flex; align-items: center; padding: 0.15em 0.6em; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; }
+        .badge-primary { background: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); }
+        .badge-secondary { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+        .badge-success { background: hsl(142 76% 36% / 0.15); color: hsl(142 76% 28%); }
+        .tabs-list { display: flex; border-bottom: 1px solid hsl(var(--border)); }
+        .tabs-trigger { flex: 1; padding: 0.75rem 1rem; border: none; background: none; font-size: 0.875rem; font-weight: 500; color: hsl(var(--muted-foreground)); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s; }
+        .tabs-trigger:hover { color: hsl(var(--foreground)); }
+        .tabs-trigger.active { color: hsl(var(--primary)); border-bottom-color: hsl(var(--primary)); }
+        .dialog-overlay { position: fixed; inset: 0; background: hsl(222.2 84% 4.9% / 0.5); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 1rem; animation: overlayIn 0.2s ease; }
+        .dialog-overlay.hidden { display: none; }
+        .dialog-content { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); box-shadow: 0 25px 50px -12px hsl(0 0% 0% / 0.25); max-width: 32rem; width: 100%; max-height: 90vh; overflow: auto; animation: contentIn 0.2s ease; }
+        .dialog-content:focus { outline: none; }
+        .dialog-header { padding: 1rem 1.25rem; border-bottom: 1px solid hsl(var(--border)); font-size: 1rem; font-weight: 600; }
+        .dialog-body { padding: 1.25rem; }
+        .dialog-footer { padding: 0.75rem 1.25rem; border-top: 1px solid hsl(var(--border)); display: flex; justify-content: flex-end; gap: 0.5rem; }
+        @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes contentIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        .toast-wrapper { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 10000; max-width: 90%; }
+        .toast-msg { padding: 0.75rem 1.25rem; border-radius: var(--radius); font-size: 0.875rem; font-weight: 500; box-shadow: 0 10px 15px -3px hsl(0 0% 0% / 0.1); animation: toastIn 0.25s ease; }
+        .toast-msg.success { background: hsl(142 76% 36%); color: #fff; }
+        .toast-msg.error { background: hsl(var(--destructive)); color: #fff; }
+        .toast-msg.info { background: hsl(var(--primary)); color: #fff; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .table-shadcn { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        .table-shadcn th { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-weight: 600; text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid hsl(var(--border)); }
+        .table-shadcn td { padding: 0.75rem 1rem; border-bottom: 1px solid hsl(var(--border)); }
+        .table-shadcn tbody tr:hover { background: hsl(var(--muted) / 0.5); }
+        .select-shadcn { min-height: 2.25rem; padding: 0 2rem 0 0.75rem; border: 1px solid hsl(var(--input)); border-radius: var(--radius); background: hsl(var(--background)); font-size: 0.875rem; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; }
+        .select-shadcn:focus { outline: none; border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2); }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
             background: linear-gradient(135deg, #eef2f7 0%, #e0e7ef 100%);
-            color: #333;
+            color: hsl(var(--foreground));
             padding: 24px;
             min-height: 100vh;
         }
@@ -61,17 +146,17 @@
             color: #555;
         }
         .student-info input, .student-info select {
-            border: 1px solid #d1d5db;
+            border: 1px solid hsl(var(--input));
             padding: 5px 12px;
-            border-radius: 6px;
+            border-radius: var(--radius);
             font-size: 14px;
-            background: #fff;
-            transition: border-color 0.2s;
+            background: hsl(var(--background));
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
         .student-info input:focus, .student-info select:focus {
-            border-color: #2563eb;
             outline: none;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+            border-color: hsl(var(--ring));
+            box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
         }
         .student-info input.name-input { width: 120px; }
         .student-info input.grade-input { width: 60px; }
@@ -589,7 +674,7 @@
         .auth-card .auth-tab {
             flex: 1; padding: 14px 16px; border: none; background: none; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer;
         }
-        .auth-card .auth-tab.active { color: #1e40af; border-bottom: 2px solid #1e40af; margin-bottom: -1px; }
+        .auth-card .auth-tab.active { color: hsl(var(--primary)); border-bottom: 2px solid hsl(var(--primary)); margin-bottom: -1px; }
         .auth-card .auth-tab:hover:not(.active) { color: #334155; }
         .auth-card .auth-panel { padding: 28px 24px; display: none; }
         .auth-card .auth-panel.active { display: block; }
@@ -603,21 +688,21 @@
         .auth-card .error { color: #dc2626; font-size: 13px; margin-top: 8px; text-align: center; }
         .auth-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 8px 20px; background: rgba(0,0,0,0.1); font-size: 13px; }
         .auth-bar .name { font-weight: 600; }
-        .auth-bar .role-badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; }
-        .auth-bar .role-teacher { background: #dbeafe; color: #1e40af; }
-        .auth-bar .role-student { background: #dcfce7; color: #166534; }
-        .auth-bar button { padding: 4px 12px; border: 1px solid rgba(255,255,255,0.6); background: transparent; color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; }
-        .auth-bar button:hover { background: rgba(255,255,255,0.2); }
+        .auth-bar .role-badge { padding: 0.15em 0.6em; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .auth-bar .role-teacher { background: hsl(var(--primary) / 0.2); color: hsl(210 40% 98%); }
+        .auth-bar .role-student { background: hsl(142 76% 36% / 0.3); color: #dcfce7; }
+        .auth-bar button { padding: 0.35rem 0.75rem; border: 1px solid rgba(255,255,255,0.5); background: transparent; color: #fff; border-radius: var(--radius); cursor: pointer; font-size: 0.8125rem; font-weight: 500; transition: background 0.2s; }
+        .auth-bar button:hover { background: rgba(255,255,255,0.15); }
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .modal-backdrop.hidden { display: none; }
-        .modal-box { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); max-width: 520px; width: 100%; max-height: 90vh; overflow: auto; }
-        .modal-box h3 { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; font-size: 16px; }
-        .modal-box .body { padding: 20px; }
-        .modal-box .footer { padding: 12px 20px; border-top: 1px solid #e5e7eb; text-align: right; }
-        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 8px; font-size: 14px; z-index: 10000; max-width: 90%; }
-        #toast.success { background: #16a34a; color: #fff; }
-        #toast.error { background: #dc2626; color: #fff; }
-        #toast.info { background: #2563eb; color: #fff; }
+        .modal-box { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-width: 520px; width: 100%; max-height: 90vh; overflow: auto; }
+        .modal-box h3 { padding: 1rem 1.25rem; border-bottom: 1px solid hsl(var(--border)); font-size: 1rem; font-weight: 600; }
+        .modal-box .body { padding: 1.25rem; }
+        .modal-box .footer { padding: 0.75rem 1.25rem; border-top: 1px solid hsl(var(--border)); text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem; }
+        #toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); padding: 0.75rem 1.25rem; border-radius: var(--radius); font-size: 0.875rem; font-weight: 500; z-index: 10000; max-width: 90%; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); transition: opacity 0.2s; }
+        #toast.success { background: hsl(142 76% 36%); color: #fff; }
+        #toast.error { background: hsl(var(--destructive)); color: #fff; }
+        #toast.info { background: hsl(var(--primary)); color: #fff; }
         .invite-page, .viewer-link-page { padding: 40px 20px; text-align: center; }
         .invite-page h2, .viewer-link-page h2 { margin-bottom: 12px; color: #1a3c6e; }
         .link-error-page { padding: 40px 20px; text-align: center; color: #dc2626; }
@@ -625,30 +710,35 @@
 </head>
 <body>
 
-<div id="loginOverlay">
+<div id="loginOverlay" class="dialog-overlay" style="background: hsl(222.2 84% 4.9% / 0.8);">
     <div style="position:absolute;top:28px;left:0;right:0;text-align:center;color:rgba(255,255,255,0.9);font-size:15px;font-weight:600;">AP Score Tracker</div>
-    <div class="auth-card">
-        <div class="auth-tabs">
-            <button type="button" class="auth-tab active" id="tabSignIn" onclick="showLoginForm()">Sign in</button>
-            <button type="button" class="auth-tab" id="tabRegister" onclick="showRegisterForm()">Register</button>
+    <div class="auth-card card-shadcn" style="width:100%;max-width:400px;">
+        <div class="tabs-list auth-tabs">
+            <button type="button" class="tabs-trigger active auth-tab" id="tabSignIn" onclick="showLoginForm()">Sign in</button>
+            <button type="button" class="tabs-trigger auth-tab" id="tabRegister" onclick="showRegisterForm()">Register</button>
         </div>
-        <div class="auth-panel active" id="loginPanel">
+        <div class="auth-panel active card-content" id="loginPanel">
             <form id="loginForm" onsubmit="return handlePasswordLogin(event)">
-                <input type="text" id="loginUsername" placeholder="Username or email" autocomplete="username" />
-                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
+                <label class="label-shadcn" for="loginUsername">Username or email</label>
+                <input class="input-shadcn" type="text" id="loginUsername" placeholder="Username or email" autocomplete="username" style="margin-bottom:12px;" />
+                <label class="label-shadcn" for="loginPassword">Password</label>
+                <input class="input-shadcn" type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" style="margin-bottom:12px;" />
                 <div id="loginError" class="error"></div>
-                <button type="submit" class="btn-primary">Sign in</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;height:2.5rem;margin-top:8px;">Sign in</button>
             </form>
         </div>
-        <div class="auth-panel" id="registerPanel">
+        <div class="auth-panel card-content" id="registerPanel">
             <form id="registerForm" onsubmit="return handleRegister(event)">
-                <input type="email" id="registerEmail" placeholder="Email" autocomplete="email" />
-                <input type="password" id="registerPassword" placeholder="Password (min 6 characters)" autocomplete="new-password" />
-                <input type="text" id="registerDisplayName" placeholder="Display name (optional)" autocomplete="name" />
+                <label class="label-shadcn" for="registerEmail">Email</label>
+                <input class="input-shadcn" type="email" id="registerEmail" placeholder="Email" autocomplete="email" style="margin-bottom:12px;" />
+                <label class="label-shadcn" for="registerPassword">Password</label>
+                <input class="input-shadcn" type="password" id="registerPassword" placeholder="Min 6 characters" autocomplete="new-password" style="margin-bottom:12px;" />
+                <label class="label-shadcn" for="registerDisplayName">Display name (optional)</label>
+                <input class="input-shadcn" type="text" id="registerDisplayName" placeholder="Display name" autocomplete="name" style="margin-bottom:12px;" />
                 <div id="registerError" class="error"></div>
-                <button type="submit" class="btn-primary">Submit registration</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;height:2.5rem;margin-top:8px;">Submit registration</button>
             </form>
-            <p class="auth-note">After you submit, the teacher will review and link your account to a student. You can sign in after that.</p>
+            <p class="auth-note" style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:12px;line-height:1.5;">After you submit, the teacher will review and link your account to a student. You can sign in after that.</p>
         </div>
     </div>
 </div>
@@ -703,16 +793,16 @@
 
     <!-- Toolbar -->
     <div class="toolbar" id="toolbar">
-        <button class="edit-btn" id="editToggleBtn" onclick="toggleEditMode()">Unlock Edit</button>
-        <button class="edit-only" onclick="addTest()">+ Add Test</button>
-        <button class="edit-only" onclick="openViewerLinksModal()">Viewer Links (Admin)</button>
-        <button class="edit-only" onclick="shareLinkForStudent()">Share link (Student)</button>
-        <button onclick="exportData()">Export JSON</button>
-        <button class="edit-only" onclick="importData()">Import JSON</button>
-        <button id="screenshotBtn" onclick="screenshotPage(this)">Screenshot</button>
-        <button class="edit-only danger" onclick="resetAll()">Reset All</button>
-        <button class="edit-only" onclick="openAccountsModal()">Manage Accounts</button>
-        <span class="locked-hint" id="lockedHint">View Only</span>
+        <button class="btn edit-btn edit-only" id="editToggleBtn" onclick="toggleEditMode()">Unlock Edit</button>
+        <button class="btn btn-primary btn-sm edit-only" onclick="addTest()">+ Add Test</button>
+        <button class="btn btn-outline btn-sm edit-only" onclick="openViewerLinksModal()">Viewer Links (Admin)</button>
+        <button class="btn btn-outline btn-sm edit-only" onclick="shareLinkForStudent()">Share link (Student)</button>
+        <button class="btn btn-outline btn-sm" onclick="exportData()">Export JSON</button>
+        <button class="btn btn-outline btn-sm edit-only" onclick="importData()">Import JSON</button>
+        <button class="btn btn-outline btn-sm" id="screenshotBtn" onclick="screenshotPage(this)">Screenshot</button>
+        <button class="btn btn-destructive btn-sm edit-only" onclick="resetAll()">Reset All</button>
+        <button class="btn btn-outline btn-sm edit-only" onclick="openAccountsModal()">Manage Accounts</button>
+        <span class="locked-hint" id="lockedHint" style="color:hsl(var(--muted-foreground));font-size:0.8125rem;">View Only</span>
     </div>
 
     <!-- Status strip: top of content (状态总览) -->
@@ -805,47 +895,50 @@
 
     <!-- Shared Mode Footer Toolbar (only visible in shared mode) -->
     <div class="footer-toolbar" id="sharedFooterToolbar" style="display:none;">
-        <button onclick="screenshotPage(this)" style="padding:7px 18px;border:1px solid #d1d5db;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;font-weight:500;">Screenshot</button>
-        <button onclick="exportData()" style="padding:7px 18px;border:1px solid #d1d5db;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;font-weight:500;">Export JSON</button>
+        <button class="btn btn-outline btn-sm" onclick="screenshotPage(this)">Screenshot</button>
+        <button class="btn btn-outline btn-sm" onclick="exportData()">Export JSON</button>
     </div>
 
     <!-- Modals -->
-    <div id="modalAddTest" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('modalAddTest')">
-        <div class="modal-box">
-            <h3>Add Test</h3>
+    <div id="modalAddTest" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalAddTestTitle" onclick="if(event.target===this)closeModal('modalAddTest')">
+        <div class="modal-box" tabindex="-1">
+            <h3 id="modalAddTestTitle">Add Test</h3>
             <div class="body">
-                <label>Test name *</label><input type="text" id="addTestName" placeholder="e.g. Mock 1" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
-                <label>Subject</label>
-                <select id="addTestSubject" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;">
+                <label class="label-shadcn" for="addTestName">Test name *</label>
+                <input class="input-shadcn" type="text" id="addTestName" placeholder="e.g. Mock 1" style="margin-bottom:12px;" />
+                <label class="label-shadcn" for="addTestSubject">Subject</label>
+                <select class="input-shadcn select-shadcn" id="addTestSubject" style="margin-bottom:12px;width:100%;">
                     <option value="AP CSA">AP CSA</option>
                     <option value="AP CSP">AP CSP</option>
                 </select>
-                <label>Exam Date</label>
-                <input type="text" id="addTestExamDate" placeholder="YYYY-MM-DD" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
+                <label class="label-shadcn" for="addTestExamDate">Exam Date</label>
+                <input class="input-shadcn" type="text" id="addTestExamDate" placeholder="YYYY-MM-DD" style="margin-bottom:12px;" />
                 <div id="addTestError" class="error"></div>
             </div>
             <div class="footer">
-                <button type="button" onclick="closeAddTestModal()" style="margin-right:8px;">Cancel</button>
-                <button type="button" id="addTestSubmitBtn" class="btn-password" onclick="submitAddTest()">Add</button>
+                <button type="button" class="btn btn-outline" onclick="closeAddTestModal()">Cancel</button>
+                <button type="button" id="addTestSubmitBtn" class="btn btn-primary" onclick="submitAddTest()">Add</button>
             </div>
         </div>
     </div>
-    <div id="modalAddStudent" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('modalAddStudent')">
-        <div class="modal-box">
+    <div id="modalAddStudent" class="modal-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('modalAddStudent')">
+        <div class="modal-box" tabindex="-1">
             <h3>Add Student</h3>
             <div class="body">
-                <label>Name *</label><input type="text" id="addStudentName" placeholder="Student name" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
-                <label>Grade</label><input type="text" id="addStudentGrade" value="12" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
-                <label>Subjects (enrolled)</label>
+                <label class="label-shadcn" for="addStudentName">Name *</label>
+                <input class="input-shadcn" type="text" id="addStudentName" placeholder="Student name" style="margin-bottom:12px;" />
+                <label class="label-shadcn" for="addStudentGrade">Grade</label>
+                <input class="input-shadcn" type="text" id="addStudentGrade" value="12" style="margin-bottom:12px;" />
+                <label class="label-shadcn">Subjects (enrolled)</label>
                 <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="addStudentSubjectCSA" /> AP CSA</label>
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="addStudentSubjectCSP" /> AP CSP</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;"><input type="checkbox" id="addStudentSubjectCSA" /> AP CSA</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;"><input type="checkbox" id="addStudentSubjectCSP" /> AP CSP</label>
                 </div>
                 <div id="addStudentError" class="error"></div>
             </div>
             <div class="footer">
-                <button type="button" onclick="closeModal('modalAddStudent')" style="margin-right:8px;">Cancel</button>
-                <button type="button" class="btn-password" onclick="submitAddStudent()">Add</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('modalAddStudent')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddStudent()">Add</button>
             </div>
         </div>
     </div>
@@ -861,27 +954,27 @@
                 <table class="score-table" style="font-size:12px;"><thead><tr><th>Student</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody id="accountsTableBody"></tbody></table>
             </div>
-            <div class="footer"><button type="button" onclick="closeModal('modalAccounts')">Close</button></div>
+            <div class="footer"><button type="button" class="btn btn-secondary" onclick="closeModal('modalAccounts')">Close</button></div>
         </div>
     </div>
-    <div id="modalViewerLinks" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('modalViewerLinks')">
-        <div class="modal-box" style="max-width:640px;">
+    <div id="modalViewerLinks" class="modal-backdrop hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('modalViewerLinks')">
+        <div class="modal-box" style="max-width:640px;" tabindex="-1">
             <h3>Viewer Links (Admin)</h3>
             <div class="body">
-                <div id="viewerLinkCreateBox" style="margin-bottom:20px;padding:12px;background:#f8fafc;border-radius:8px;">
-                    <div style="font-weight:600;margin-bottom:8px;">Create new link</div>
-                    <input type="text" id="newViewerLinkName" placeholder="Link name (e.g. Admin)" style="width:100%;max-width:240px;padding:6px 8px;margin-bottom:10px;box-sizing:border-box;display:block;" />
-                    <div style="font-size:13px;margin-bottom:6px;">Select students this link can see:</div>
-                    <div id="viewerLinkCreateStudents" style="max-height:180px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px;background:#fff;"></div>
-                    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;">
+                <div id="viewerLinkCreateBox" style="margin-bottom:20px;padding:12px;background:hsl(var(--muted));border-radius:var(--radius);">
+                    <div class="label-shadcn">Create new link</div>
+                    <input class="input-shadcn" type="text" id="newViewerLinkName" placeholder="Link name (e.g. Admin)" style="max-width:240px;margin-bottom:10px;" />
+                    <div class="label-shadcn" style="margin-top:8px;">Select students this link can see:</div>
+                    <div id="viewerLinkCreateStudents" style="max-height:180px;overflow-y:auto;border:1px solid hsl(var(--border));border-radius:var(--radius);padding:8px;background:hsl(var(--background));"></div>
+                    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:0.875rem;cursor:pointer;">
                         <input type="checkbox" id="newViewerLinkAllowScores" checked /> Allow this viewer to see student scores
                     </label>
-                    <button type="button" class="btn-password" style="margin-top:10px;width:auto;padding:6px 16px;" onclick="createViewerLink()">Create link</button>
+                    <button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="createViewerLink()">Create link</button>
                 </div>
-                <div style="font-weight:600;margin-bottom:8px;">Existing links</div>
+                <div class="label-shadcn">Existing links</div>
                 <div id="viewerLinksList"></div>
             </div>
-            <div class="footer"><button type="button" onclick="closeModal('modalViewerLinks')">Close</button></div>
+            <div class="footer"><button type="button" class="btn btn-secondary" onclick="closeModal('modalViewerLinks')">Close</button></div>
         </div>
     </div>
 
@@ -1095,7 +1188,7 @@ function applyEditMode() {
         btn.textContent = 'Unlock Edit';
         btn.classList.remove('active');
         hint.textContent = 'View Only';
-        hint.style.color = '#94a3b8';
+        hint.style.color = 'hsl(var(--muted-foreground))';
     }
 
     // Enable/disable student info controls
@@ -1175,10 +1268,22 @@ function openAddStudentModal() {
     document.getElementById('addStudentSubjectCSP').checked = false;
     document.getElementById('addStudentError').textContent = '';
     document.getElementById('modalAddStudent').classList.remove('hidden');
+    focusFirstInModal('modalAddStudent');
 }
 function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
 }
+function focusFirstInModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (!modal) return;
+    var first = modal.querySelector('input:not([type="hidden"]), select, textarea, button');
+    if (first) setTimeout(function() { first.focus(); }, 50);
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var open = document.querySelector('.modal-backdrop:not(.hidden)');
+    if (open && open.id) { closeModal(open.id); e.preventDefault(); }
+});
 async function submitAddStudent() {
     const name = document.getElementById('addStudentName').value.trim();
     if (!name) {
@@ -1701,6 +1806,7 @@ function openAddTestModal() {
     var btn = document.getElementById('addTestSubmitBtn');
     if (btn) btn.disabled = false;
     document.getElementById('modalAddTest').classList.remove('hidden');
+    focusFirstInModal('modalAddTest');
 }
 function closeAddTestModal() {
     document.getElementById('modalAddTest').classList.add('hidden');
@@ -2138,6 +2244,7 @@ async function openAccountsModal() {
         tbody.appendChild(tr);
     });
     document.getElementById('modalAccounts').classList.remove('hidden');
+    focusFirstInModal('modalAccounts');
 }
 async function approveRegistration(userId) {
     var sel = document.getElementById('approveSelect_' + userId);
@@ -2206,6 +2313,7 @@ async function openViewerLinksModal() {
             '</div>';
     }).join('') || '<p style="color:#64748b;">No viewer links yet. Create one above.</p>';
     document.getElementById('modalViewerLinks').classList.remove('hidden');
+    focusFirstInModal('modalViewerLinks');
 }
 
 function toggleEditViewerLink(linkId) {
