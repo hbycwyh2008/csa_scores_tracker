@@ -784,7 +784,7 @@
                     <option value="AP CSP">AP CSP</option>
                 </select>
                 <label>Exam Date</label>
-                <input type="date" id="addTestExamDate" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
+                <input type="text" id="addTestExamDate" placeholder="YYYY-MM-DD" style="width:100%;padding:8px;margin-bottom:12px;box-sizing:border-box;" />
                 <div id="addTestError" class="error"></div>
             </div>
             <div class="footer">
@@ -1275,12 +1275,12 @@ function renderTable() {
         var frqStatusClass = frqBadge === '✓' ? ' mcq-frq-pass' : (frqBadge === '✗' ? ' mcq-frq-fail' : '');
         var mcqDisplay = (mcqVal !== '' && mcqVal !== undefined && !isNaN(Number(mcqVal))) ? Number(mcqVal).toFixed(3) : (mcqVal !== '' && mcqVal !== undefined ? mcqVal : '—');
         var frqDisplay = (frqVal !== '' && frqVal !== undefined && !isNaN(Number(frqVal))) ? Number(frqVal).toFixed(3) : (frqVal !== '' && frqVal !== undefined ? frqVal : '—');
-        var mcqInput = editMode ? '<input type="number" min="0" step="0.001" value="' + mcqVal + '" placeholder="—" class="mcq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onMcqChange(this)" oninput="onMcqChange(this)" style="width:64px;">' : mcqDisplay;
-        var frqInput = editMode ? '<input type="number" min="0" step="0.001" value="' + frqVal + '" placeholder="—" class="frq-input" data-index="' + i + '" data-test-id="' + testId + '" onchange="onFrqChange(this)" oninput="onFrqChange(this)" style="width:64px;">' : frqDisplay;
+        var mcqInput = editMode ? '<input type="text" inputmode="decimal" placeholder="—" class="mcq-input" value="' + (mcqVal !== '' && mcqVal !== undefined ? (typeof mcqVal === 'number' && !isNaN(mcqVal) ? mcqVal.toFixed(3) : String(mcqVal)) : '') + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onMcqChange(this)" onblur="onMcqChange(this)" style="width:72px;">' : mcqDisplay;
+        var frqInput = editMode ? '<input type="text" inputmode="decimal" placeholder="—" class="frq-input" value="' + (frqVal !== '' && frqVal !== undefined ? (typeof frqVal === 'number' && !isNaN(frqVal) ? frqVal.toFixed(3) : String(frqVal)) : '') + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onFrqChange(this)" onblur="onFrqChange(this)" style="width:72px;">' : frqDisplay;
         var nameCell = editMode ? '<input type="text" class="test-name-input" value="' + (t.name || '').replace(/"/g, '&quot;') + '" placeholder="Test name" data-index="' + i + '" data-test-id="' + testId + '" onchange="onTestNameChange(this)" onblur="onTestNameChange(this)" style="width:100%;min-width:80px;padding:4px 6px;box-sizing:border-box;">' : '<span title="' + (t.name || '').replace(/"/g, '&quot;') + '">' + (t.name || '').replace(/</g, '&lt;') + '</span>';
         var rawDate = (t.examDate && String(t.examDate).trim()) ? String(t.examDate).trim().slice(0, 10) : '';
         var examDateDisplay = (rawDate && rawDate.length >= 10 && rawDate.slice(0, 4) >= '2000' && rawDate.slice(0, 4) <= '2100') ? rawDate : '—';
-        var examDateCell = editMode ? '<input type="date" class="exam-date-input" min="2000-01-01" max="2100-12-31" value="' + (examDateDisplay !== '—' ? examDateDisplay : '') + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onExamDateChange(this)" style="width:100%;min-width:100px;padding:4px 6px;box-sizing:border-box;">' : examDateDisplay;
+        var examDateCell = editMode ? '<input type="text" class="exam-date-input" placeholder="YYYY-MM-DD" value="' + (examDateDisplay !== '—' ? examDateDisplay.replace(/"/g, '&quot;') : '') + '" data-index="' + i + '" data-test-id="' + testId + '" onchange="onExamDateChange(this)" onblur="onExamDateChange(this)" style="width:100%;min-width:100px;padding:4px 6px;box-sizing:border-box;">' : examDateDisplay;
         var scoreDisplay = totalScore !== null ? String(totalScore) : '--';
         rowsHTML += '<tr><td class="td-num">' + rowNum + '</td><td class="td-name">' + nameCell + '</td><td class="td-exam-date">' + examDateCell + '</td><td class="td-score"><span class="' + scoreClass + '" title="MCQ + FRQ rounded">' + scoreDisplay + '</span></td><td class="td-ap">' + apBadge + '</td><td class="td-mcq">' + mcqInput + ' <span class="mcq-frq-status' + mcqStatusClass + '">' + mcqBadge + '</span></td><td class="td-frq">' + frqInput + ' <span class="mcq-frq-status' + frqStatusClass + '">' + frqBadge + '</span></td><td class="td-action">' + (editMode ? '<button onclick="deleteTestByIndex(' + i + ')" title="Delete this test">&times;</button>' : '') + '</td></tr>';
     });
@@ -1353,8 +1353,9 @@ function onScoreChange(input) {
 function onMcqChange(input) {
     const idx = parseInt(input.dataset.index, 10);
     const val = input.value.trim();
-    tests[idx].mcqWrong = val === '' ? null : parseFloat(val);
-    if (isNaN(tests[idx].mcqWrong)) tests[idx].mcqWrong = null;
+    var num = val === '' ? null : parseFloat(val);
+    if (num != null && !isNaN(num)) num = Math.round(num * 1000) / 1000;
+    tests[idx].mcqWrong = (num != null && !isNaN(num)) ? num : null;
     tests[idx].score = getComputedTotalScore(tests[idx]);
     updateAll();
     if (sharedMode || !students[currentStudentIndex] || !students[currentStudentIndex].id) return;
@@ -1371,8 +1372,9 @@ function onMcqChange(input) {
 function onFrqChange(input) {
     const idx = parseInt(input.dataset.index, 10);
     const val = input.value.trim();
-    tests[idx].frqScore = val === '' ? null : parseFloat(val);
-    if (isNaN(tests[idx].frqScore)) tests[idx].frqScore = null;
+    var num = val === '' ? null : parseFloat(val);
+    if (num != null && !isNaN(num)) num = Math.round(num * 1000) / 1000;
+    tests[idx].frqScore = (num != null && !isNaN(num)) ? num : null;
     tests[idx].score = getComputedTotalScore(tests[idx]);
     updateAll();
     if (sharedMode || !students[currentStudentIndex] || !students[currentStudentIndex].id) return;
@@ -1387,11 +1389,26 @@ function onFrqChange(input) {
     }, 600);
 }
 
+function parseExamDateInput(val) {
+    if (!val || !val.trim()) return null;
+    var s = val.trim().replace(/\//g, '-').replace(/\./g, '-');
+    var parts = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!parts) {
+        var loose = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+        if (loose) parts = [s, loose[1], loose[2], loose[3]];
+    }
+    if (!parts || parts.length < 4) return null;
+    var y = parts[1], m = ('0' + parts[2]).slice(-2), d = ('0' + parts[3]).slice(-2);
+    var dateStr = y + '-' + m + '-' + d;
+    if (y < '2000' || y > '2100') return null;
+    return dateStr;
+}
 function onExamDateChange(input) {
     const testId = input.dataset.testId;
     if (!testId) return;
     const val = input.value.trim();
-    var newDate = val ? val.slice(0, 10) : null;
+    var newDate = parseExamDateInput(val);
+    if (val && !newDate) newDate = val.length >= 10 ? val.slice(0, 10) : null;
     if (newDate && (newDate.slice(0, 4) < '2000' || newDate.slice(0, 4) > '2100')) newDate = null;
     var t = tests.filter(function(x) { return String(x.id) === String(testId); })[0];
     if (t) t.examDate = newDate;
@@ -1654,7 +1671,8 @@ async function submitAddTest() {
         return;
     }
     const subject = document.getElementById('addTestSubject').value || 'AP CSA';
-    const examDateVal = document.getElementById('addTestExamDate').value ? document.getElementById('addTestExamDate').value.trim().slice(0, 10) : null;
+    var examDateRaw = document.getElementById('addTestExamDate').value ? document.getElementById('addTestExamDate').value.trim() : '';
+    const examDateVal = parseExamDateInput(examDateRaw) || (examDateRaw.length >= 10 ? examDateRaw.slice(0, 10) : null);
     const bottomLine = subject === 'AP CSP' ? 90 : 84;
     var btn = document.getElementById('addTestSubmitBtn');
     if (btn) btn.disabled = true;
