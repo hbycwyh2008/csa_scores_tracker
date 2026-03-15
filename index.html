@@ -127,9 +127,12 @@
         .table-container {
             padding: 20px 20px 0;
             max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         table.score-table {
             width: 100%;
+            min-width: 720px;
             border-collapse: collapse;
             font-size: 13px;
         }
@@ -182,6 +185,14 @@
         table.score-table td.td-score {
             background: #fff7ed;
             padding: 0;
+            min-width: 52px;
+        }
+        table.score-table td.td-exam-date {
+            min-width: 100px;
+        }
+        table.score-table td.td-mcq,
+        table.score-table td.td-frq {
+            min-width: 100px;
         }
         table.score-table td.td-score input {
             width: 80px;
@@ -258,6 +269,12 @@
         .mcq-frq-pass { color: #16a34a; font-weight: 600; }
         .mcq-frq-fail { color: #dc2626; font-weight: 600; }
         table.score-table td.td-mcq, table.score-table td.td-frq { white-space: nowrap; }
+        @media (max-width: 768px) {
+            table.score-table { font-size: 14px; }
+            table.score-table th, table.score-table td { padding: 10px 8px; }
+            table.score-table td.td-score span, table.score-table td.td-mcq .mcq-frq-status,
+            table.score-table td.td-frq .mcq-frq-status { font-size: 14px; font-weight: 700; }
+        }
 
         /* Subject filter pills */
         .subject-filter {
@@ -732,6 +749,7 @@
         <strong>Pass rules (by subject):</strong> <span id="passRulesText">AP CSA: MCQ &gt; 48.45, FRQ &gt; 22.5. AP CSP: MCQ &gt; 65, FRQ &gt; 25. ✓ = pass, ✗ = fail.</span>
     </div>
     <!-- Score Table -->
+    <p class="table-scroll-hint" id="tableScrollHint" style="display:none;font-size:12px;color:#64748b;margin:0 20px 6px 0;">↔ Swipe to see all scores</p>
     <div class="table-container" id="tableContainer">
         <table class="score-table" id="scoreTable">
             <thead id="tableHead"></thead>
@@ -1301,6 +1319,8 @@ function renderTable() {
     var avgDisplay = avg !== null ? (avg % 1 === 0 ? String(Math.round(avg)) : avg.toFixed(1)) : '--';
     rowsHTML += '<tr class="summary-row"><td></td><td style="text-align:left;padding-left:14px;">Average / Estimated</td><td></td><td>' + avgDisplay + '</td><td>' + apBadgeSummary + '</td><td colspan="2">' + mcqSummary + ' &nbsp; ' + frqSummary + '</td><td></td></tr>';
     tbody.innerHTML = rowsHTML;
+    var hint = document.getElementById('tableScrollHint');
+    if (hint) hint.style.display = window.innerWidth <= 768 ? 'block' : 'none';
 }
 
 async function deleteTestByIndex(index) {
@@ -1783,6 +1803,17 @@ function screenshotPage(btn) {
     btn.textContent = 'Capturing...';
     const origOverflow = container.style.overflow;
     container.style.overflow = 'visible';
+    var tableContainer = document.getElementById('tableContainer');
+    var origTableOverflow = '', origTableMaxWidth = '';
+    if (tableContainer) {
+        origTableOverflow = tableContainer.style.overflow;
+        origTableMaxWidth = tableContainer.style.maxWidth;
+        var table = tableContainer.querySelector('table');
+        if (table && table.scrollWidth > 0) {
+            tableContainer.style.overflow = 'visible';
+            tableContainer.style.maxWidth = Math.max(table.scrollWidth, 720) + 'px';
+        }
+    }
     html2canvas(container, {
         scale: 2,
         useCORS: true,
@@ -1804,6 +1835,10 @@ function screenshotPage(btn) {
         showToast('Screenshot failed: ' + err.message, 'error');
     }).finally(function() {
         container.style.overflow = origOverflow;
+        if (tableContainer) {
+            tableContainer.style.overflow = origTableOverflow || 'auto';
+            tableContainer.style.maxWidth = origTableMaxWidth || '';
+        }
         btn.disabled = false;
         btn.textContent = 'Screenshot';
     });
@@ -2252,6 +2287,10 @@ async function shareLinkForStudent() {
     }
     checkExistingAuth().then(ok => {
         if (!ok) document.getElementById('loginOverlay').classList.remove('hidden');
+    });
+    window.addEventListener('resize', function() {
+        var h = document.getElementById('tableScrollHint');
+        if (h) h.style.display = window.innerWidth <= 768 ? 'block' : 'none';
     });
 })();
 </script>
